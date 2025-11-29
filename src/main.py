@@ -4,16 +4,18 @@ import page_handler as ph
 
 def main(page: ft.Page):
     page.title = "DormHub"
-    page.window.bgcolor = "#FFFAEA"
+    page.bgcolor = "#FFFAEA"
 
     def rout_change(route):
-        page.views.clear()
-        ph.set_root_page(page)
+        try:
+            page.views.clear()
+            ph.set_root_page(page)
 
-        if page.route == "/login-admin":
-            print("Todo: Admin")
-        if page.route == "/login-user":
-            print("Todo: User")
+            if page.route == "/login-admin":
+                print("Todo: Admin")
+            if page.route == "/login-user":
+                print("Todo: User")
+        except Exception as e: print("Error: ", e)
 
     def view_pop():
         page.views.pop()
