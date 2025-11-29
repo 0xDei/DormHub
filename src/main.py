@@ -1,20 +1,22 @@
 import flet as ft
-import page_handler as ph
+from page_handler import PageHandler
 
 
 def main(page: ft.Page):
     page.title = "DormHub"
     page.bgcolor = "#FFFAEA"
+    page.window.width = 1280
+    page.window.height = 720
+    page.window.resizable = False
+
+    ph = PageHandler(page)
 
     def rout_change(route):
         try:
             page.views.clear()
-            ph.set_root_page(page)
-
-            if page.route == "/login-admin":
-                print("Todo: Admin")
-            if page.route == "/login-user":
-                print("Todo: User")
+            ph.set_root_page()
+            if page.route == "/login-admin": ph.show_login_page(0)
+            if page.route == "/login-resident": ph.show_login_page(1)
         except Exception as e: print("Error: ", e)
 
     def view_pop():
