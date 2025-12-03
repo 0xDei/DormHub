@@ -64,7 +64,7 @@ class LoginPage:
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 vertical_alignment=ft.MainAxisAlignment.CENTER,
-                bgcolor="#FFFAEA"
+                bgcolor="#FFFBEB"
             )
         )
         self.page.update()

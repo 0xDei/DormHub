@@ -80,7 +80,7 @@ class PageHandler:
                     cards_row
                 ],
                 spacing=40,
-                bgcolor="#FFFAEA",
+                bgcolor="#FFFBEB",
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER
             )
         )
