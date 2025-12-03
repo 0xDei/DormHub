@@ -8,6 +8,7 @@ def main(page: ft.Page):
     page.window.width = 1280
     page.window.height = 720
     page.window.resizable = False
+    page.theme_mode = ft.ThemeMode.LIGHT
 
     ph = PageHandler(page)
 
