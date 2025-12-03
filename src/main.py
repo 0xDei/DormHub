@@ -1,3 +1,7 @@
+import sys
+sys.path.insert(1, 'pages/')
+sys.path.insert(2, 'utils/')
+
 import flet as ft
 from page_handler import PageHandler
 
