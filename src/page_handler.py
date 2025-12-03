@@ -1,13 +1,16 @@
 import flet as ft
 
 from login_page import LoginPage
+from resident_page import ResidentPage
 from element_factory import *
 
 
 class PageHandler:
     def __init__(self, page: ft.Page):
         self.page = page
+
         self.login_page = None
+        self.active_portal = None
 
     async def set_root_page(self):
         admin_card = ft.Container(
@@ -87,9 +90,24 @@ class PageHandler:
 
 
     async def show_login_page(self, login_type=1):
-        if self.page.data.connected == False: return
+        if self.page.data.connected == False: return print("Not connected!")
 
         if self.login_page == None: self.login_page = LoginPage(self.page, login_type)
         elif login_type != self.login_page.get_type():  self.login_page.change_type(login_type)
         
         await self.login_page.show()
+
+    
+    async def show_resident_page(self):
+        if self.page.data.connected == False: return print("Not connected!")
+
+        active_user = self.page.data.get_active_user()
+        if active_user == None:
+            create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.PERSON_OFF_OUTLINED, color=ft.Colors.RED), "Error: No user logged in! Going back to root page.", ft.Colors.RED)
+            self.page.go("/")
+            return
+
+        self.active_portal = ResidentPage(self.page, self.page.data.get_active_user())
+        await self.active_portal.load_data()
+        await self.active_portal.show()
+

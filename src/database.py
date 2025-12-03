@@ -8,6 +8,7 @@ from element_factory import *
 class Database:
     def __init__(self):
         self.connected = False
+        self.active_user = None
 
         base_path = os.getenv("FLET_APP_STORAGE_DATA")
         if base_path is None: base_path = os.getcwd()
@@ -16,6 +17,12 @@ class Database:
 
         # connection holder
         self.pool = None
+
+    def set_active_user(self, user_id):
+        self.active_user = user_id
+
+    def get_active_user(self):
+        return self.active_user
 
     async def connect(self, page):
         if self.connected: return
@@ -42,7 +49,16 @@ class Database:
                 await cur.execute("SELECT * FROM users")
                 return await cur.fetchall()
 
-    async def get_user(self, name, exact=True):
+    async def get_user_by_id(self, user_id):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT * FROM users WHERE id = %s",
+                    (user_id,)
+                )
+                return await cur.fetchall()
+
+    async def get_user_by_name(self, name, exact=True):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 if exact:

@@ -24,6 +24,9 @@ def main(page: ft.Page):
             await ph.set_root_page()
             if page.route == "/login-admin": await ph.show_login_page(0)
             if page.route == "/login-resident": await ph.show_login_page(1)
+
+            if page.route == "/active-admin": await ph.show_admin_page()
+            if page.route == "/active-resident": await ph.show_resident_page()
         except Exception as e: print("Error: ", e)
 
     def view_pop():

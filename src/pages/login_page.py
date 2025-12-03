@@ -99,7 +99,8 @@ class LoginPage:
         emailTF.error_text = ""
         passwordTF.error_text = ""
 
-        print("Coming soon...")
+        self.page.data.set_active_user(user_data[0][0])
+        self.page.go("/active-resident")
         
         close_active_banner(self.page)
         self.page.update()
