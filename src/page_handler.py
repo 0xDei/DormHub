@@ -9,7 +9,7 @@ class PageHandler:
         self.page = page
         self.login_page = None
 
-    def set_root_page(self):
+    async def set_root_page(self):
         admin_card = ft.Container(
             ft.Column(
                 [
@@ -83,9 +83,13 @@ class PageHandler:
         )
         self.page.update()
 
+        if self.page.data.connected == False: await self.page.data.connect(self.page)
 
-    def show_login_page(self, login_type=1):
+
+    async def show_login_page(self, login_type=1):
+        if self.page.data.connected == False: return
+
         if self.login_page == None: self.login_page = LoginPage(self.page, login_type)
         elif login_type != self.login_page.get_type():  self.login_page.change_type(login_type)
         
-        self.login_page.show()
+        await self.login_page.show()
