@@ -1,35 +1,15 @@
 import flet as ft
 
+from login_page import LoginPage
+from element_factory import *
+
+
 class PageHandler:
     def __init__(self, page: ft.Page):
         self.page = page
+        self.login_page = None
 
-
-    def get_icon(self, icon_size=24, isColumn=True, radius=10, pad=8, text1_size=12, text2_size=9):
-        icon = ft.Container(
-            ft.Image(
-                src=f"assets/icon{icon_size}.png",
-                color=ft.Colors.WHITE
-            ),
-            bgcolor="#FF6900",
-            border_radius=radius,
-            padding=pad
-        )
-
-        text1 = ft.Text("DormHub", color="#FF6900", size=text1_size)
-        text2 = ft.Text("Your cozy dorm management system", color=ft.Colors.BLACK, size=text2_size)
-
-        return ft.Column(
-            [
-                ft.Column([icon, text1], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                text2
-            ],
-            spacing=14,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
-
-
-    def set_root_page(self):
+    async def set_root_page(self):
         admin_card = ft.Container(
             ft.Column(
                 [
@@ -93,7 +73,7 @@ class PageHandler:
             ft.View(
                 "/",
                 [
-                    ft.Container(self.get_icon(), margin=ft.margin.only(top=100)),
+                    ft.Container(get_icon(), margin=ft.margin.only(top=100)),
                     cards_row
                 ],
                 spacing=40,
@@ -103,22 +83,13 @@ class PageHandler:
         )
         self.page.update()
 
+        if self.page.data.connected == False: await self.page.data.connect(self.page)
 
-    def show_login_page(self, type=1):
 
-        login_card = ft.Column(
-            [
-                ft.Text("Log in as Admin" if type == 0 else "Log in as Resident")
-            ]
-        )
+    async def show_login_page(self, login_type=1):
+        if self.page.data.connected == False: return
 
-        self.page.views.append(
-            ft.View(
-                "/login-admin" if type == 0 else "/login-resident",
-                [
-                    ft.Row([self.get_icon(64, True, 18, 16, 24, 18), login_card])
-                ],
-                bgcolor="#FFFAEA"
-            )
-        )
-        self.page.update()
+        if self.login_page == None: self.login_page = LoginPage(self.page, login_type)
+        elif login_type != self.login_page.get_type():  self.login_page.change_type(login_type)
+        
+        await self.login_page.show()

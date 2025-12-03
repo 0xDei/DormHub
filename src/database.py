@@ -1,67 +1,98 @@
-import mysql.connector
+import aiomysql
 import os
+import aiofiles
 
-token_path = ""
+import flet as ft
+from element_factory import *
 
-def init_db():
-    global token_path
+class Database:
+    def __init__(self):
+        self.connected = False
 
-    conn = mysql.connector.connect(host="localhost", user="root", password="djpim!", database="weatherapp", connection_timeout=5)
-    cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS users(id INT PRIMARY KEY AUTO_INCREMENT, username TEXT NOT NULL, email TEXT, password TEXT NOT NULL)")
-    conn.commit()
+        base_path = os.getenv("FLET_APP_STORAGE_DATA")
+        if base_path is None: base_path = os.getcwd()
 
-    token_path = os.path.join(os.getenv("FLET_APP_STORAGE_DATA"), "token.txt")
-    return conn
+        self.token_path = os.path.join(base_path, "token.txt")
 
+        # connection holder
+        self.pool = None
 
-def create_user(conn, username, email, password):
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-        (username, email, password)
-    )
-    conn.commit()
+    async def connect(self, page):
+        if self.connected: return
 
+        create_banner(page, ft.Colors.AMBER_100, ft.Image(src="assets/db-connect.png", color=ft.Colors.AMBER_900), "Attempting to connect to database...", ft.Colors.BLUE)
+        try:
+            self.pool = await aiomysql.create_pool(host="localhost", user="root", password="djpim!", db="dormhub_app", autocommit=True)
+            create_banner(page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINED, color=ft.Colors.GREEN), "You are now connected!", ft.Colors.GREEN_500)
+            self.connected = True
+        except Exception as e:
+            create_banner(page, ft.Colors.RED_100, ft.Icon(ft.Icons.WARNING_AMBER_OUTLINED, color=ft.Colors.RED), f"Could not connect to database! Please check your internet connection.", ft.Colors.RED)
 
-def get_users(conn, search=None):
-    cursor = conn.cursor()
-    if search == None:
-        cursor.execute("SELECT * FROM users")
-        return cursor.fetchall()
-    
-    cursor.execute("SELECT * FROM users WHERE LOWER(username) LIKE ?", ( "%"+search.lower()+"%",))
-    return cursor.fetchall()
+    async def create_user(self, username, email, password):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "INSERT INTO users (username, email, password, data) VALUES (%s, %s, %s, %s)",
+                    (username, email, password, "")
+                )
 
+    async def get_all_users(self):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT * FROM users")
+                return await cur.fetchall()
 
-def update_user(conn, user_id, name, phone, email):
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE users SET username = ?, email = ?, password = ? WHERE id = ?",
-        (name, phone, email, user_id)
-    )
-    conn.commit()
+    async def get_user(self, name, exact=True):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                if exact:
+                    await cur.execute(
+                        "SELECT * FROM users WHERE username = %s",
+                        (name,)
+                    )
+                else: 
+                    await cur.execute(
+                        "SELECT * FROM users WHERE LOWER(username) LIKE %s",
+                        ("%" + name.lower() + "%",)
+                    )
+                return await cur.fetchall()
 
+    async def get_user_by_email(self, email):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT * FROM users WHERE email = %s",
+                    (email,)
+                )
+                return await cur.fetchall()
 
-def delete_contact_db(conn, user_id):
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
+    async def update_user(self, user_id, name, email, password, data):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "UPDATE users SET username=%s, email=%s, password=%s, data=%s WHERE id=%s",
+                    (name, email, password, data, user_id)
+                )
 
+    async def delete_contact_db(self, user_id):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
 
-def get_token():
-    global token_path
+    async def get_token(self):
+        try:
+            async with aiofiles.open(self.token_path, "r") as f:
+                token = await f.read()
+                return token.strip()
+        except (FileNotFoundError, ValueError):
+            return None
 
-    try:
-        with open(token_path, "r") as f:
-            token = str(f.read().strip())
-    except (FileNotFoundError, ValueError):
-        token = None
-    return token
+    async def set_token(self, token):
+        async with aiofiles.open(self.token_path, "w") as f:
+            await f.write(str(token))
 
-
-def set_token(token):
-    global token_path
-
-    with open(token_path, "w") as f:
-        f.write(str(token))
+    async def close(self):
+        if self.pool is not None:
+            self.pool.close()
+            await self.pool.wait_closed()
+            self.pool = None
