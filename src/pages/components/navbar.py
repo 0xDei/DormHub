@@ -25,7 +25,7 @@ class NavBar(ft.Container):
                             border_radius=50,
                             bgcolor="#FF6900"
                         ),
-                        ft.Column([ft.Text(self.resident_page.username, size=14, weight=ft.FontWeight.W_400), ft.Text("Room 09", size=10, weight=ft.FontWeight.W_100)], spacing=0)
+                        ft.Column([ft.Text(self.resident_page.username, size=14, weight=ft.FontWeight.W_400), ft.Text(self.resident_page.data["room_id"], size=10, weight=ft.FontWeight.W_100)], spacing=0)
                     ],
                 ),
                 bgcolor="#FEFBE8",

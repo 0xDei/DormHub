@@ -1,6 +1,7 @@
 import aiomysql
 import os
 import aiofiles
+import json
 
 import flet as ft
 from utils.element_factory import *
@@ -40,10 +41,18 @@ class Database:
 
     async def create_user(self, username, email, password):
         async with self.pool.acquire() as conn:
+
+            data = {
+                "room_id": "N/A",
+                "move_in_date": "N/A",
+                "due_payments": [],
+                "requests": []
+            }
+
             async with conn.cursor() as cur:
                 await cur.execute(
                     "INSERT INTO users (username, email, password, data) VALUES (%s, %s, %s, %s)",
-                    (username, email, password, "none")
+                    (username, email, password, json.dumps(data))
                 )
 
 
@@ -52,6 +61,7 @@ class Database:
             async with conn.cursor() as cur:
                 await cur.execute("SELECT * FROM users")
                 return await cur.fetchall()
+
 
     async def get_user_by_id(self, user_id):
         async with self.pool.acquire() as conn:
@@ -88,12 +98,13 @@ class Database:
                 )
                 return await cur.fetchall()
 
+
     async def update_user(self, user_id, name, email, password, data):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(
                     "UPDATE users SET username=%s, email=%s, password=%s, data=%s WHERE id=%s",
-                    (name, email, password, data, user_id)
+                    (name, email, password, json.dumps(data), user_id)
                 )
 
 
@@ -101,6 +112,51 @@ class Database:
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
+
+    
+    async def get_all_rooms(self):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT * FROM rooms")
+                return await cur.fetchall()
+
+    
+    async def get_room_by_id(self, room_id):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT * FROM rooms WHERE id = %s",
+                    (room_id,)
+                )
+                return await cur.fetchall()
+
+
+    async def get_all_requests(self):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT * FROM requests")
+                return await cur.fetchall()
+
+
+    async def get_request_by_id(self, request_id):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT * FROM requests WHERE id = %s",
+                    (request_id,)
+                )
+                return await cur.fetchall()
+
+        
+    async def get_request_by_room_id(self, room_id):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT * FROM requests WHERE room_id = %s",
+                    (room_id,)
+                )
+                return await cur.fetchall()
+
 
     # i don't know if I have enough time to implement a feature that will use this to store acount token and make them auto log in
     async def get_token(self):
