@@ -60,7 +60,7 @@ def create_banner(page, color, icon, text, buttonColor):
     global active_banner
 
     close_active_banner(page)
-    banner = ft.Banner(bgcolor=color, leading=icon, content=ft.Text(text), actions=[ft.TextButton(text="Ok", style=ft.ButtonStyle(color=buttonColor), on_click=lambda e: page.close(banner))])
+    banner = ft.Banner(bgcolor=color, leading=icon, content=ft.Text(text), actions=[ft.TextButton(text="Dismiss", style=ft.ButtonStyle(color=buttonColor), on_click=lambda e: page.close(banner))])
     page.open(banner)
 
     active_banner = banner
