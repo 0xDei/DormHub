@@ -12,6 +12,7 @@ class PageHandler:
         self.login_page = None
         self.active_portal = None
 
+
     async def set_root_page(self):
         admin_card = ft.Container(
             ft.Column(
@@ -90,7 +91,7 @@ class PageHandler:
 
 
     async def show_login_page(self, login_type=1):
-        if self.page.data.connected == False: return print("Not connected!")
+        if self.page.data.connected == False: return
 
         if self.login_page == None: self.login_page = LoginPage(self.page, login_type)
         elif login_type != self.login_page.get_type():  self.login_page.change_type(login_type)
@@ -98,8 +99,8 @@ class PageHandler:
         await self.login_page.show()
 
     
-    async def show_resident_page(self):
-        if self.page.data.connected == False: return print("Not connected!")
+    async def show_resident_page(self, section=None):
+        if self.page.data.connected == False: return
 
         active_user = self.page.data.get_active_user()
         if active_user == None:
@@ -108,6 +109,8 @@ class PageHandler:
             return
 
         self.active_portal = ResidentPage(self.page, self.page.data.get_active_user())
-        await self.active_portal.load_data()
+        await self.active_portal.load_async()
         await self.active_portal.show()
+
+        
 

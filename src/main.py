@@ -25,6 +25,7 @@ def main(page: ft.Page):
             if page.route == "/active-resident": await ph.show_resident_page()
         except Exception as e: print("Error: ", e)
 
+
     def view_pop():
         page.views.pop()
         top_view = page.views[-1]

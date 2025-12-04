@@ -3,10 +3,10 @@ import flet as ft
 from utils.element_factory import get_navbar_icon
 
 class NavBar(ft.Container):
-    def __init__(self, isAdmin=True, user_data=None, buttons=[]):
+    def __init__(self, isAdmin=True, resident_page=None, buttons=[]):
         super().__init__()
 
-        self.user_data = user_data
+        self.resident_page = resident_page
         self.buttons = buttons
 
         self.width = 200
@@ -25,7 +25,7 @@ class NavBar(ft.Container):
                             border_radius=50,
                             bgcolor="#FF6900"
                         ),
-                        ft.Column([ft.Text(self.user_data[0], size=14, weight=ft.FontWeight.W_400), ft.Text("Room 09", size=10, weight=ft.FontWeight.W_100)], spacing=0)
+                        ft.Column([ft.Text(self.resident_page.username, size=14, weight=ft.FontWeight.W_400), ft.Text("Room 09", size=10, weight=ft.FontWeight.W_100)], spacing=0)
                     ],
                 ),
                 bgcolor="#FEFBE8",

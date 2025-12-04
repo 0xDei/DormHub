@@ -27,6 +27,7 @@ class NavBarButton(ft.Container):
         self.on_hover = self.hover
         self.on_click = self.click
 
+
     def hover(self, e):
         if self.is_selected: return
 
@@ -37,6 +38,7 @@ class NavBarButton(ft.Container):
 
         self.update()
 
+
     def click(self, e):
         global active_button
         if self.is_selected: return
@@ -45,6 +47,7 @@ class NavBarButton(ft.Container):
         self.set_active(True)
 
         if self.callback != None: self.callback.__call__(e)
+
 
     def set_active(self, is_active):
         global active_button

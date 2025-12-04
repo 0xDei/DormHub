@@ -21,8 +21,10 @@ class Database:
     def set_active_user(self, user_id):
         self.active_user = user_id
 
+
     def get_active_user(self):
         return self.active_user
+
 
     async def connect(self, page):
         if self.connected: return
@@ -35,6 +37,7 @@ class Database:
         except Exception as e:
             create_banner(page, ft.Colors.RED_100, ft.Icon(ft.Icons.WARNING_AMBER_OUTLINED, color=ft.Colors.RED), f"Could not connect to database! Please check your internet connection.", ft.Colors.RED)
 
+
     async def create_user(self, username, email, password):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
@@ -42,6 +45,7 @@ class Database:
                     "INSERT INTO users (username, email, password, data) VALUES (%s, %s, %s, %s)",
                     (username, email, password, "")
                 )
+
 
     async def get_all_users(self):
         async with self.pool.acquire() as conn:
@@ -58,6 +62,7 @@ class Database:
                 )
                 return await cur.fetchall()
 
+
     async def get_user_by_name(self, name, exact=True):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
@@ -72,6 +77,7 @@ class Database:
                         ("%" + name.lower() + "%",)
                     )
                 return await cur.fetchall()
+
 
     async def get_user_by_email(self, email):
         async with self.pool.acquire() as conn:
@@ -90,11 +96,13 @@ class Database:
                     (name, email, password, data, user_id)
                 )
 
-    async def delete_contact_db(self, user_id):
+
+    async def delete_user(self, user_id):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
 
+    # i don't know if I have enough time to implement a feature that will use this to store acount token and make them auto log in
     async def get_token(self):
         try:
             async with aiofiles.open(self.token_path, "r") as f:
@@ -103,9 +111,11 @@ class Database:
         except (FileNotFoundError, ValueError):
             return None
 
+
     async def set_token(self, token):
         async with aiofiles.open(self.token_path, "w") as f:
             await f.write(str(token))
+
 
     async def close(self):
         if self.pool is not None:

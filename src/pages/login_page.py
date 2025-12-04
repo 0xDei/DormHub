@@ -7,6 +7,7 @@ class LoginPage:
         self.page = page
         self.type = type
 
+
     async def show(self):
         emailTF = ft.TextField(label="Admin Email" if self.type == 0 else "Email", hint_text="Enter admin email" if self.type == 0 else "Enter your email", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.EMAIL_OUTLINED, color="#B8B8C1"), width=340, autofocus=True, on_submit=lambda e: self.page.run_task(self.check_login, emailTF, passwordTF))
         passwordTF = ft.TextField(label="Admin Password" if self.type == 0 else "Password", hint_text="Enter admin password" if self.type == 0 else "Enter your password", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.LOCK_OUTLINED, color="#B8B8C1"), width=340, password=True, can_reveal_password=True, on_submit=lambda e: self.page.run_task(self.check_login, emailTF, passwordTF))
@@ -49,6 +50,7 @@ class LoginPage:
             width=370
         )
 
+
         self.page.views.append(
             ft.View(
                 "/login-admin" if self.type == 0 else "/login-resident",
@@ -68,6 +70,7 @@ class LoginPage:
             )
         )
         self.page.update()
+
 
     async def check_login(self, emailTF, passwordTF):
         email = emailTF.value
@@ -105,8 +108,10 @@ class LoginPage:
         close_active_banner(self.page)
         self.page.update()
 
+
     def get_type(self):
         return self.type
+
 
     def change_type(self, type):
         self.type = type
