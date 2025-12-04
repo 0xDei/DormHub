@@ -1,11 +1,8 @@
-import sys
-sys.path.insert(1, 'pages/')
-sys.path.insert(2, 'utils/')
-
 import flet as ft
+
 from database import Database
 from page_handler import PageHandler
-
+from utils.element_factory import close_active_banner
 
 def main(page: ft.Page):
     page.title = "DormHub"
@@ -21,10 +18,15 @@ def main(page: ft.Page):
     async def rout_change(route):
         try:
             page.views.clear()
+            close_active_banner(page)
             await ph.set_root_page()
             if page.route == "/login-admin": await ph.show_login_page(0)
             if page.route == "/login-resident": await ph.show_login_page(1)
+
+            if page.route == "/active-admin": await ph.show_admin_page()
+            if page.route == "/active-resident": await ph.show_resident_page()
         except Exception as e: print("Error: ", e)
+
 
     def view_pop():
         page.views.pop()
