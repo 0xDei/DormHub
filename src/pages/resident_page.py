@@ -13,36 +13,40 @@ class ResidentPage:
         self.password = None
         self.user_data = None
         self.view = None
+        self.data = None
+        self.navbar = None
 
-        # json.dumps(string) to encode
 
     async def load_async(self):
         res = await self.page.data.get_user_by_id(self.id)
         self.username = res[0][1]        
         self.email = res[0][2]        
         self.password = res[0][3]
+        self.data = json.loads(res[0][4])
+
+        self.navbar = NavBar(
+            isAdmin=False, 
+            resident_page=self,
+            buttons=[
+                NavBarButton(ft.Icons.BED, "My Room", lambda e: lambda e: self.page.run_task(self.show_section, )),
+                NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, ft.Container())),
+                NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, ft.Container()))
+            ]
+        )
 
         self.view = ft.View(
             "/page-resident",
             [
-                NavBar(
-                    isAdmin=False, 
-                    resident_page=self,
-                    buttons=[
-                        NavBarButton(ft.Icons.BED, "My Room", lambda e: print("clicked my room")),
-                        NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, ft.Container())),
-                        NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, ft.Container()))
-                    ]
-                )
+                ft.Row([self.navbar])
             ],
             bgcolor="#FFFBEB",
             padding=5
         )
 
 
-    async def get_data(self):
+    async def update_data(self):
         res = await self.page.data.get_user_by_id(self.id)
-        return json.loads(res[0][4]) if res[0][4] != 'none' else {}
+        self.data = json.loads(res[0][4])
 
 
     async def show(self):
@@ -51,8 +55,8 @@ class ResidentPage:
 
     
     async def show_section(self, section=ft.Container()):
-        if len(self.view.controls) > 1: self.view.controls[1] = section
-        else: self.view.controls.append(section)
+        if len(self.view.controls[0].controls) > 1: self.view.controls[0].controls[1] = section
+        else: self.view.controls[0].controls.append(section)
 
         self.view.update()
     
