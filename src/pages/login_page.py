@@ -1,6 +1,6 @@
 import flet as ft
 import re
-from element_factory import *
+from utils.element_factory import *
 
 class LoginPage:
     def __init__(self, page: ft.Page, type=1):

@@ -1,0 +1,44 @@
+import flet as ft
+
+from utils.element_factory import get_navbar_icon
+
+class NavBar(ft.Container):
+    def __init__(self, isAdmin=True, user_data=None, buttons=[]):
+        super().__init__()
+
+        self.user_data = user_data
+        self.buttons = buttons
+
+        self.width = 200
+        self.height = 720
+        self.padding = ft.padding.only(top=15, left=10, right=12, bottom=15)
+        self.bgcolor = ft.Colors.WHITE
+
+        account_button = ft.Container()
+        if isAdmin == False:
+            account_button = ft.Container(
+                ft.Row(
+                    [
+                        ft.Container(
+                            ft.Icon(ft.Icons.PERSON_OUTLINE_ROUNDED, color=ft.Colors.WHITE),
+                            padding=4,
+                            border_radius=50,
+                            bgcolor="#FF6900"
+                        ),
+                        ft.Column([ft.Text(self.user_data[0], size=14, weight=ft.FontWeight.W_400), ft.Text("Room 09", size=10, weight=ft.FontWeight.W_100)], spacing=0)
+                    ],
+                ),
+                bgcolor="#FEFBE8",
+                padding=ft.padding.only(top=7, left=10, right=10, bottom=7),
+                border_radius=10,
+                margin=ft.margin.only(top=10)
+            )
+
+        self.content = ft.Column(
+            [
+                get_navbar_icon(1),
+                account_button,
+                ft.Container(ft.Divider(2), margin=ft.margin.only(top=10, bottom=20)),
+                *self.buttons
+            ]
+        )

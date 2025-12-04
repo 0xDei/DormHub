@@ -1,7 +1,8 @@
 import flet as ft
 import json
 
-from element_factory import *
+from pages.components.navbar import NavBar
+from pages.components.navbar_button import NavBarButton
 
 class ResidentPage:
     def __init__(self, page: ft.Page, user_id):
@@ -22,57 +23,24 @@ class ResidentPage:
         self.user_data = json.loads(res[0][4]) if res[0][4] != 'none' else {}
 
     async def show(self):
-        account_button = ft.Container(
-            ft.Row(
-                [
-                    ft.Container(
-                        ft.Icon(ft.Icons.PERSON_OUTLINE_ROUNDED, color=ft.Colors.WHITE),
-                        padding=4,
-                        border_radius=50,
-                        bgcolor="#FF6900"
-                    ),
-                    ft.Column([ft.Text(self.username, size=14, weight=ft.FontWeight.W_400), ft.Text("Room 09", size=10, weight=ft.FontWeight.W_100)], spacing=0)
-                ],
-            ),
-            bgcolor="#FEFBE8",
-            padding=ft.padding.only(top=7, left=10, right=10, bottom=7),
-            border_radius=10,
-            margin=ft.margin.only(top=10)
-        )
-        
-        buttons = ft.Container(
-            ft.Column(
-                [
-                    create_navbar_button(self.page, ft.Icons.BED, "My Room", lambda e: print("clicked"))
-                ]
-            )
-        )
-
-        navbar = ft.Container(
-            ft.Column(
-                [
-                    get_navbar_icon(1),
-                    account_button,
-                    ft.Container(ft.Divider(2), margin=ft.margin.only(top=10, bottom=20)),
-                    buttons
-                ]
-            ),
-            width=200,
-            height=720,
-            bgcolor=ft.Colors.WHITE,
-            padding=ft.padding.only(top=15, left=10, right=10, bottom=15)
-        )
-
         self.page.views.append(
             ft.View(
                 "/page-resident",
                 [
-                    navbar
+                    NavBar(
+                        isAdmin=False, 
+                        user_data=[self.username, self.user_data], 
+                        buttons=[
+                            NavBarButton(ft.Icons.BED, "My Room", lambda e: print("clicked my room")),
+                            NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: print("clicked payments")),
+                            NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: print("clicked requests"))
+                            #create_navbar_button(ft.Icons.BED, "Community", lambda e: print("clicked"))
+                        ]
+                    )
                 ],
                 bgcolor="#FFFBEB",
                 padding=5
             )
         )
-
         self.page.update()
     

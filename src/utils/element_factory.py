@@ -1,13 +1,13 @@
 import flet as ft
+from pages.components.navbar_button import NavBarButton
 
 active_banner = None
-navbar_buttons = []
 
 # this might be unecessary and makes things more complicated
 def get_icon(icon_size=24, isColumn=True, radius=10, pad=8, text1_size=12, text2_size=9, marg=ft.margin.only(0, 0, 0, 0)):
     icon = ft.Container(
         ft.Image(
-            src=f"assets/icon{icon_size}.png",
+            src=f"../assets/icon{icon_size}.png",
             color=ft.Colors.WHITE
         ),
         bgcolor="#FF6900",
@@ -33,7 +33,7 @@ def get_icon(icon_size=24, isColumn=True, radius=10, pad=8, text1_size=12, text2
 def get_navbar_icon(type=1):
     icon = ft.Container(
         ft.Image(
-            src=f"assets/icon24.png",
+            src=f"../assets/icon24.png",
             color=ft.Colors.WHITE
         ),
         bgcolor="#FF6900" if type == 0 else "#FE9A00",
@@ -55,26 +55,6 @@ def get_navbar_icon(type=1):
             ]
         )
     )
-
-def create_navbar_button(page, icon, name, callback):
-    def hover_effect(e):
-        print("hovered")
-
-    custom_button = ft.Container(
-        ft.Row(
-            [
-                icon if isinstance(icon, ft.Image) else ft.Icon(icon, size=24, color=ft.Colors.GREY_700),
-                ft.Text(name, size=12, weight=ft.FontWeight.W_500)
-            ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER
-        ),
-        padding=ft.padding.only(top=7, left=10, right=10, bottom=7),
-        bgcolor="#FF6900",
-        on_hover=hover_effect,
-        border_radius=7
-    )
-
-    return custom_button
 
 def create_banner(page, color, icon, text, buttonColor):
     global active_banner

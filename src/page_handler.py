@@ -1,8 +1,8 @@
 import flet as ft
 
-from login_page import LoginPage
-from resident_page import ResidentPage
-from element_factory import *
+from pages.login_page import LoginPage
+from pages.resident_page import ResidentPage
+from utils.element_factory import *
 
 
 class PageHandler:
@@ -16,7 +16,7 @@ class PageHandler:
         admin_card = ft.Container(
             ft.Column(
                 [
-                    ft.Container(ft.Image(src="assets/admin.png", color="#FF6900"), border_radius=50, padding=12, bgcolor="#FFEDD4"),
+                    ft.Container(ft.Image(src="../assets/admin.png", color="#FF6900"), border_radius=50, padding=12, bgcolor="#FFEDD4"),
                     ft.Text("Admin Dashboard", weight=ft.FontWeight.BOLD, size=16, color="#FF6900"),
                     ft.Text("Manage rooms, residents bookings, maintenance, and finances", size=12, color=ft.Colors.BLACK, text_align=ft.TextAlign.CENTER),
                     ft.FilledButton("Continue as Admin", width=320, height=30, bgcolor="#FF6900", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD)), color=ft.Colors.WHITE, on_click=lambda e: self.page.go("/login-admin"))
@@ -41,7 +41,7 @@ class PageHandler:
         resident_card = ft.Container(
             ft.Column(
                 [
-                    ft.Container(ft.Image(src="assets/resident.png", color="#FE9A00"), border_radius=50, padding=12, bgcolor="#FEF3C6"),
+                    ft.Container(ft.Image(src="../assets/resident.png", color="#FE9A00"), border_radius=50, padding=12, bgcolor="#FEF3C6"),
                     ft.Text("Resident Dashboard", weight=ft.FontWeight.BOLD, size=16, color="#FE9A00"),
                     ft.Text("View your room, pay rent, submit requests, and connect with housemates", size=12, color=ft.Colors.BLACK, text_align=ft.TextAlign.CENTER),
                     ft.FilledButton("Continue as Resident", width=320, height=30, bgcolor="#FE9A00", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD)), color=ft.Colors.WHITE, on_click=lambda e: self.page.go("/login-resident"))

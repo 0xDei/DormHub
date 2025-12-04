@@ -3,7 +3,7 @@ import os
 import aiofiles
 
 import flet as ft
-from element_factory import *
+from utils.element_factory import *
 
 class Database:
     def __init__(self):
