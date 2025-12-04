@@ -10,8 +10,8 @@ class NavBar(ft.Container):
         self.buttons = buttons
 
         self.width = 200
-        self.height = 720
-        self.padding = ft.padding.only(top=15, left=10, right=12, bottom=15)
+        self.height = 670
+        self.padding = ft.padding.only(top=15, left=10, right=10, bottom=15)
         self.bgcolor = ft.Colors.WHITE
 
         account_button = ft.Container()
@@ -39,6 +39,9 @@ class NavBar(ft.Container):
                 get_navbar_icon(1),
                 account_button,
                 ft.Container(ft.Divider(2), margin=ft.margin.only(top=10, bottom=20)),
-                *self.buttons
+                *self.buttons,
+                ft.Container(expand=True),
+                ft.Divider(2),
+                ft.Container(margin=ft.margin.only(top=10), content=ft.FilledButton("Logout", icon=ft.Icons.EXIT_TO_APP_ROUNDED, icon_color=ft.Colors.RED, bgcolor="#FEF9F9", color=ft.Colors.RED, elevation=0, width=180, height=30, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.W_700), alignment=ft.alignment.center_left, padding=10)))
             ]
         )
