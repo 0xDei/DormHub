@@ -43,7 +43,7 @@ class Database:
             async with conn.cursor() as cur:
                 await cur.execute(
                     "INSERT INTO users (username, email, password, data) VALUES (%s, %s, %s, %s)",
-                    (username, email, password, "")
+                    (username, email, password, "none")
                 )
 
 

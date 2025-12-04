@@ -1,5 +1,6 @@
 import flet as ft
 import re
+
 from utils.element_factory import *
 
 class LoginPage:
@@ -27,7 +28,7 @@ class LoginPage:
                     ft.Container(ft.Column(
                             [
                                 ft.FilledButton("Log In", width=340, height=45, bgcolor="#FF6900", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), color=ft.Colors.WHITE, on_click=lambda e: self.page.run_task(self.check_login, emailTF, passwordTF)),
-                                ft.Row([ft.Text("Don't have an account?"), ft.GestureDetector(content=ft.Text("Sign Up", color="#7189FF"), on_tap=lambda e: print("clicked"))], spacing=3) if self.type == 1 else ft.Row()
+                                ft.Row([ft.Text("Don't have an account?"), ft.GestureDetector(content=ft.Text("Sign Up", color="#7189FF"), on_tap=lambda e: self.page.run_task(self.show_sign_up))], spacing=3) if self.type == 1 else ft.Row()
                             ]
                         ),
                         margin=ft.margin.only(top=60)
@@ -104,8 +105,92 @@ class LoginPage:
 
         self.page.data.set_active_user(user_data[0][0])
         self.page.go("/active-resident")
-        
-        close_active_banner(self.page)
+        self.page.update()
+
+    
+    async def show_sign_up(self):
+        usernameTF = ft.TextField(label="Username", hint_text="Enter your desired username", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.PERSON_OUTLINE_ROUNDED, color="#B8B8C1"), width=370, autofocus=True)
+        emailTF = ft.TextField(label="Email", hint_text="Enter your email", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.EMAIL_OUTLINED, color="#B8B8C1"), width=370, autofocus=True)
+        passwordTF = ft.TextField(label="Password", hint_text="Enter a secure password", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.LOCK_OUTLINED, color="#B8B8C1"), width=370, password=True, can_reveal_password=True)
+        confirm_passwordTF = ft.TextField(label="Confirm password", hint_text="Confirm your password", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.LOCK_OUTLINED, color="#B8B8C1"), width=370, password=True, can_reveal_password=True)
+
+        async def sign_up(e):
+            username = usernameTF.value.strip()
+            email = emailTF.value.strip()
+            password = passwordTF.value
+            confirm_password = confirm_passwordTF.value
+
+            usernameTF.error_text = ""
+            emailTF.error_text = ""
+            passwordTF.error_text = ""
+            confirm_passwordTF.error_text = ""
+
+            has_error = False
+
+            if len(username) < 3 or len(username) > 24:
+                usernameTF.error_text = "[!] Username must be > 3 but < 24 characters long"
+                has_error = True
+
+            res = await self.page.data.get_user_by_name(username)
+            if len(res) > 0:
+                usernameTF.error_text = "[!] Username already exists"
+                has_error = True
+
+            regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+            if email == "" or not re.fullmatch(regex, email):
+                emailTF.error_text = "[!] Please enter a valid email"
+                has_error = True
+
+            res = await self.page.data.get_user_by_email(email)
+            if len(res) > 0:
+                emailTF.error_text = "[!] Email already in use"
+                has_error = True
+
+            if len(password) < 6:
+                passwordTF.error_text = "[!] Password must 6 or more characters long"
+                has_error = True
+
+            if password != confirm_password:
+                confirm_passwordTF.error_text = "[!] Password does not match"
+                has_error = True
+
+
+            if has_error:
+                self.page.update()
+                return
+
+            await self.page.data.create_user(username, email, password)
+            self.page.close(popup)
+            create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.PERSON_ADD_ALT_1_OUTLINED, color=ft.Colors.GREEN), f"Account creation success!\n Welcome, {username}", ft.Colors.GREEN_500)
+            self.page.update()
+
+        popup = ft.AlertDialog(
+            modal=True,
+            icon=ft.Icon(ft.Icons.PERSON_ADD_ALT_1_ROUNDED, size=48),
+            content=ft.Container(ft.Column(
+                    [
+                        ft.Text("Create Account", size=24, color=ft.Colors.BLACK),
+                        usernameTF, emailTF, passwordTF, confirm_passwordTF
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20
+                ),
+                width=400,
+                alignment=ft.alignment.center
+            ),
+            actions=[
+                ft.Column(
+                    [
+                        ft.FilledButton("Cancel", width=370, height=30, bgcolor="#E6E8EE", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16)), color=ft.Colors.BLACK, on_click=lambda e: self.page.close(popup)),
+                        ft.FilledButton("Create Account", width=370, height=30, bgcolor="#FF6900", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), color=ft.Colors.WHITE, on_click=sign_up),
+                    ]
+                )
+            ],
+            shape=ft.RoundedRectangleBorder(radius=15),
+            actions_alignment=ft.MainAxisAlignment.CENTER
+        )
+
+        self.page.open(popup)
         self.page.update()
 
 
