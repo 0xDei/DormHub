@@ -24,7 +24,7 @@ class MyRoom(Section):
             spacing=1
         )
 
-        date = datetime.fromtimestamp(self.resident_page.data["due_payments"][-1])
+        date = datetime.fromtimestamp(int(self.resident_page.data["due_date"]))
         due_date = f"{date.strftime('%b')} {date.day}, {date.year}"
         
         top_info = ft.Row(
@@ -55,6 +55,7 @@ class MyRoom(Section):
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             spacing=20,
+            expand=True
         )
 
         roommates = self.resident_page.data["roommates"]

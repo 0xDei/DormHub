@@ -51,7 +51,9 @@ class Database:
             data = {
                 "room_id": "N/A",
                 "move_in_date": "N/A",
-                "due_payments": [],
+                "due_date": "N/A",
+                "payment_history": [],
+                "unpaid_dues": [],
                 "requests": [],
                 "phone_number": "N/A"
             }

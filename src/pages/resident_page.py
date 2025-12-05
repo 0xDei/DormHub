@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 
 from pages.sections.my_room import MyRoom
+from pages.sections.payment import Payment
 from pages.components.navbar import NavBar
 from pages.components.navbar_button import NavBarButton
 
@@ -47,7 +48,7 @@ class ResidentPage:
             current_page=self,
             buttons=[
                 NavBarButton(ft.Icons.BED, "My Room", lambda e: self.page.run_task(self.show_section, MyRoom(self)), True),
-                NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, ft.Text("Test"))),
+                NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, Payment(self))),
                 NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, ft.Container()))
             ]
         )
