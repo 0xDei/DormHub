@@ -7,7 +7,7 @@ from utils.element_factory import close_active_banner
 def main(page: ft.Page):
     page.title = "DormHub"
     page.bgcolor = "#FFFAEA"
-    page.window.width = 1280
+    page.window.width = 900
     page.window.height = 720
     page.window.resizable = False
     page.theme_mode = ft.ThemeMode.LIGHT

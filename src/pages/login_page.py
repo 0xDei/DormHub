@@ -62,7 +62,7 @@ class LoginPage:
                             login_card
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
-                        spacing=200
+                        spacing=70
                     )
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
