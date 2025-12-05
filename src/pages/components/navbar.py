@@ -10,7 +10,7 @@ class NavBar(ft.Container):
         self.buttons = buttons
 
         self.width = 200
-        self.height = 670
+        self.height = 685
         self.padding = ft.padding.only(top=15, left=10, right=10, bottom=15)
         self.bgcolor = ft.Colors.WHITE
 
@@ -25,7 +25,7 @@ class NavBar(ft.Container):
                             border_radius=50,
                             bgcolor="#FF6900"
                         ),
-                        ft.Column([ft.Text(self.resident_page.username, size=14, weight=ft.FontWeight.W_400), ft.Text(self.resident_page.data["room_id"], size=10, weight=ft.FontWeight.W_100)], spacing=0)
+                        ft.Column([ft.Text(self.resident_page.username, size=14, weight=ft.FontWeight.W_400), ft.Text("Room " + self.resident_page.data["room_id"], size=10, weight=ft.FontWeight.W_100)], spacing=0)
                     ],
                 ),
                 bgcolor="#FEFBE8",
