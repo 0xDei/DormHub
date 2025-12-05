@@ -39,6 +39,12 @@ class Database:
             create_banner(page, ft.Colors.RED_100, ft.Icon(ft.Icons.WARNING_AMBER_OUTLINED, color=ft.Colors.RED), f"Could not connect to database! Please check your internet connection.", ft.Colors.RED)
 
 
+    async def custom_query(self, query, params):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(query, params)
+                return await cur.fetchall()
+
     async def create_user(self, username, email, password):
         async with self.pool.acquire() as conn:
 
@@ -46,7 +52,8 @@ class Database:
                 "room_id": "N/A",
                 "move_in_date": "N/A",
                 "due_payments": [],
-                "requests": []
+                "requests": [],
+                "phone_number": "N/A"
             }
 
             async with conn.cursor() as cur:
