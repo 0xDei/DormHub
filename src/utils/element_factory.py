@@ -57,18 +57,21 @@ def get_navbar_icon(type=1):
     )
 
 def create_info_card(name, content, icon, icon_placement, bgcolor, width, height):
+
+    card_name = ft.Column([ft.Text(name, size=12, color=ft.Colors.GREY_600), *content], spacing=0, expand=True)
+    card_icon = ft.Container(icon, bgcolor=bgcolor, border_radius=7, width=icon.size * 1.5, height=icon.size * 1.5)
+    
+    row_content = [card_icon, card_name]
+    if icon_placement == "right": row_content = [card_name, card_icon]    
+
     return ft.Container(
-        ft.Row(
-            [
-                ft.Column([ft.Text(name, size=12, color=ft.Colors.GREY_500), *content], spacing=2)
-            ],
-            ft.Container(icon, bgcolor=bgcolor, border_radius=7, padding=8)
-        ),
-        padding=10,
+        ft.Row(row_content),
+        padding=ft.padding.only(left=20, right=20, top=18, bottom=20),
         border_radius=10,
         width=width,
         height=height,
-        bgcolor=ft.Colors.WHITE
+        bgcolor=ft.Colors.WHITE,
+        border=ft.border.all(2, "#FEF3C6")
     )
 
 def create_banner(page, color, icon, text, buttonColor):

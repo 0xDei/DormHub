@@ -62,7 +62,7 @@ class LoginPage:
                             login_card
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
-                        spacing=200
+                        spacing=70
                     )
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -74,10 +74,6 @@ class LoginPage:
 
 
     async def check_login(self, emailTF, passwordTF):
-        self.page.go("/active-resident")
-        self.page.update()
-        return
-
         email = emailTF.value
         password = passwordTF.value
 

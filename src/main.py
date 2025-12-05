@@ -12,10 +12,9 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
 
     page.data = Database()
-    page.data.set_active_user(2)
     ph = PageHandler(page)
 
-    async def rout_change(route):
+    async def route_change(route):
         try:
             page.views.clear()
             close_active_banner(page)
@@ -33,7 +32,7 @@ def main(page: ft.Page):
         top_view = page.views[-1]
         page.go(top_view.route)
 
-    page.on_route_change = rout_change
+    page.on_route_change = route_change
     page.on_view_pop = view_pop
 
     page.go(page.route)
