@@ -54,7 +54,7 @@ class MyRoom(Section):
                 )
             ],
             alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20,
+            spacing=15,
             expand=True
         )
 
@@ -140,7 +140,7 @@ class MyRoom(Section):
 
             roommate_cards.append(card)
 
-        if len(roommate_cards) == 0: roommate_cards.append(ft.Container(ft.Text("You have no roommates")))
+        if len(roommate_cards) == 0: roommate_cards.append(ft.Container(ft.Text("You have no payment history", color=ft.Colors.GREY_300), expand=True, alignment=ft.alignment.center))
 
         room_mate = ft.Container(
             ft.Column(
