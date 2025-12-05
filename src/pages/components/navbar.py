@@ -11,7 +11,7 @@ class NavBar(ft.Container):
 
         self.width = 200
         self.height = 685
-        self.padding = ft.padding.only(top=15, left=10, right=10, bottom=15)
+        self.padding = ft.padding.only(top=18, left=13, right=13, bottom=18)
         self.bgcolor = ft.Colors.WHITE
 
         account_button = ft.Container()

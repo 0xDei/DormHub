@@ -56,6 +56,21 @@ def get_navbar_icon(type=1):
         )
     )
 
+def create_info_card(name, content, icon, icon_placement, bgcolor, width, height):
+    return ft.Container(
+        ft.Row(
+            [
+                ft.Column([ft.Text(name, size=12, color=ft.Colors.GREY_500), *content], spacing=2)
+            ],
+            ft.Container(icon, bgcolor=bgcolor, border_radius=7, padding=8)
+        ),
+        padding=10,
+        border_radius=10,
+        width=width,
+        height=height,
+        bgcolor=ft.Colors.WHITE
+    )
+
 def create_banner(page, color, icon, text, buttonColor):
     global active_banner
 

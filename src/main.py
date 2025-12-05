@@ -6,13 +6,13 @@ from utils.element_factory import close_active_banner
 
 def main(page: ft.Page):
     page.title = "DormHub"
-    page.bgcolor = "#FFFAEA"
-    page.window.width = 1280
+    page.window.width = 900
     page.window.height = 720
     page.window.resizable = False
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.data = Database()
 
+    page.data = Database()
+    page.data.set_active_user(2)
     ph = PageHandler(page)
 
     async def rout_change(route):

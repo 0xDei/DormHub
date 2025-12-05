@@ -74,6 +74,10 @@ class LoginPage:
 
 
     async def check_login(self, emailTF, passwordTF):
+        self.page.go("/active-resident")
+        self.page.update()
+        return
+
         email = emailTF.value
         password = passwordTF.value
 
