@@ -30,19 +30,19 @@ def get_icon(icon_size=24, isColumn=True, radius=10, pad=8, text1_size=12, text2
         margin=marg
     )
 
-def get_navbar_icon(type=1):
+def get_navbar_icon(isAdmin):
     icon = ft.Container(
         ft.Image(
             src=f"../assets/icon24.png",
             color=ft.Colors.WHITE
         ),
-        bgcolor="#FF6900" if type == 0 else "#FE9A00",
+        bgcolor="#FF6900" if isAdmin else "#FE9A00",
         border_radius=10,
         padding=8
     )
 
-    text1 = ft.Text("DormHub", color="#FF6900" if type == 0 else "#FE9A00", size=14, weight=ft.FontWeight.W_700)
-    text2 = ft.Text("Admin Portal" if type == 0 else "Resident Portal", size=10)
+    text1 = ft.Text("DormHub", color="#FF6900" if isAdmin else "#FE9A00", size=14, weight=ft.FontWeight.W_700)
+    text2 = ft.Text("Admin Portal" if isAdmin else "Resident Portal", size=10)
 
     return ft.Container(
         ft.Row(

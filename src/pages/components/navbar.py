@@ -36,7 +36,7 @@ class NavBar(ft.Container):
 
         self.content = ft.Column(
             [
-                get_navbar_icon(1),
+                get_navbar_icon(isAdmin),
                 account_button,
                 ft.Container(ft.Divider(2), margin=ft.margin.only(top=10, bottom=20)),
                 *self.buttons,

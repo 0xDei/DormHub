@@ -8,6 +8,9 @@ class LoginPage:
         self.page = page
         self.type = type
 
+        self.admin_email = "admin@gmail.com"
+        self.admin_password = "admin123"
+
 
     async def show(self):
         emailTF = ft.TextField(label="Admin Email" if self.type == 0 else "Email", hint_text="Enter admin email" if self.type == 0 else "Enter your email", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=0, bgcolor="#F3F3F5", prefix_icon=ft.Icon(ft.Icons.EMAIL_OUTLINED, color="#B8B8C1"), width=340, autofocus=True, on_submit=lambda e: self.page.run_task(self.check_login, emailTF, passwordTF))
@@ -75,10 +78,6 @@ class LoginPage:
         email = emailTF.value
         password = passwordTF.value
 
-        if self.type == 0:
-            print("Coming soon...")
-            return
-
         regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
         if email.strip() == "" or not re.fullmatch(regex, email):
             emailTF.error_text = "Please enter a valid email!"
@@ -86,6 +85,23 @@ class LoginPage:
             return
         emailTF.error_text = ""
         self.page.update()
+
+        if self.type == 0:
+            if email != self.admin_email or password != self.admin_password:
+                create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.PERSON_OFF_OUTLINED, color=ft.Colors.RED), "No user found! Double check your email or password.", ft.Colors.RED)
+
+                emailTF.error_text = "No user found!"
+                passwordTF.error_text = "Incorrect email or password!"
+
+                passwordTF.value = ""
+                self.page.update()
+                return
+            emailTF.error_text = ""
+            passwordTF.error_text = ""
+                
+            self.page.go("/active-admin")
+            self.page.update()
+            return
 
         user_data = await self.page.data.get_user_by_email(email)
 

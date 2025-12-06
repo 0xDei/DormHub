@@ -2,6 +2,7 @@ import flet as ft
 
 from pages.login_page import LoginPage
 from pages.resident_page import ResidentPage
+from pages.admin_page import AdminPage
 from utils.element_factory import *
 
 
@@ -109,5 +110,11 @@ class PageHandler:
         await self.active_portal.load_async()
         return await self.active_portal.show()
 
-        
+    
+    async def show_admin_page(self, section=None):
+        if self.page.data.connected == False: return
+
+        self.active_portal = AdminPage(self.page)
+        await self.active_portal.load_async()
+        return await self.active_portal.show()
 

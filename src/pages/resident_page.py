@@ -62,7 +62,7 @@ class ResidentPage:
             isAdmin=False, 
             current_page=self,
             buttons=[
-                NavBarButton(ft.Icons.BED, "My Room", lambda e: self.page.run_task(self.show_section, MyRoom(self)), True),
+                NavBarButton(ft.Icons.HOME_ROUNDED, "My Room", lambda e: self.page.run_task(self.show_section, MyRoom(self)), True),
                 NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, Payment(self))),
                 NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, Requests(self)))
             ]
