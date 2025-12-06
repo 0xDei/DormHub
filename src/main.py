@@ -18,19 +18,28 @@ def main(page: ft.Page):
         try:
             page.views.clear()
             close_active_banner(page)
-            await ph.set_root_page()
-            if page.route == "/login-admin": await ph.show_login_page(0)
-            if page.route == "/login-resident": await ph.show_login_page(1)
 
-            if page.route == "/active-admin": await ph.show_admin_page()
-            if page.route == "/active-resident": await ph.show_resident_page()
+            match page.route:
+                case '/':
+                    page.views.append(await ph.set_root_page())
+                case "/login-admin": 
+                    page.views.append(await ph.show_login_page(0))
+                case "/login-resident": 
+                    page.views.append(await ph.show_login_page(1))
+                case "/active-admin": 
+                    page.views.append(await ph.show_admin_page())
+                case "/active-resident": 
+                    page.views.append(await ph.show_resident_page())
+
+            page.update()
         except Exception as e: print("Error: ", e)
 
 
-    def view_pop():
+    def view_pop(e):
         page.views.pop()
-        top_view = page.views[-1]
-        page.go(top_view.route)
+        if len(page.views) == 0:
+            return
+        page.go(page.views[-1].route)
 
     page.on_route_change = route_change
     page.on_view_pop = view_pop

@@ -52,25 +52,23 @@ class LoginPage:
         )
 
 
-        self.page.views.append(
-            ft.View(
-                "/login-admin" if self.type == 0 else "/login-resident",
-                [
-                    ft.Row(
-                        [
-                            get_icon(64, True, 18, 16, 24, 18, ft.margin.only(bottom=30)), 
-                            login_card
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        spacing=70
-                    )
-                ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                vertical_alignment=ft.MainAxisAlignment.CENTER,
-                bgcolor="#FFFBEB"
-            )
+        
+        return ft.View(
+            "/login-admin" if self.type == 0 else "/login-resident",
+            [
+                ft.Row(
+                    [
+                        get_icon(64, True, 18, 16, 24, 18, ft.margin.only(bottom=30)), 
+                        login_card
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=70
+                )
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            vertical_alignment=ft.MainAxisAlignment.CENTER,
+            bgcolor="#FFFBEB"
         )
-        self.page.update()
 
 
     async def check_login(self, emailTF, passwordTF):

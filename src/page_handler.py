@@ -73,21 +73,18 @@ class PageHandler:
             spacing=20
         )
 
-        self.page.views.append(
-            ft.View(
-                "/",
-                [
-                    ft.Container(get_icon(), margin=ft.margin.only(top=100)),
-                    cards_row
-                ],
-                spacing=40,
-                bgcolor="#FFFBEB",
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            )
-        )
-        self.page.update()
-
         if self.page.data.connected == False: await self.page.data.connect(self.page)
+
+        return ft.View(
+            "/",
+            [
+                ft.Container(get_icon(), margin=ft.margin.only(top=100)),
+                cards_row
+            ],
+            spacing=40,
+            bgcolor="#FFFBEB",
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
 
 
     async def show_login_page(self, login_type=1):
@@ -96,7 +93,7 @@ class PageHandler:
         if self.login_page == None: self.login_page = LoginPage(self.page, login_type)
         elif login_type != self.login_page.get_type():  self.login_page.change_type(login_type)
         
-        await self.login_page.show()
+        return await self.login_page.show()
 
     
     async def show_resident_page(self, section=None):
@@ -110,7 +107,7 @@ class PageHandler:
 
         self.active_portal = ResidentPage(self.page, self.page.data.get_active_user())
         await self.active_portal.load_async()
-        await self.active_portal.show()
+        return await self.active_portal.show()
 
         
 

@@ -1,6 +1,6 @@
 import flet as ft
 
-from utils.element_factory import get_navbar_icon
+from utils.element_factory import get_navbar_icon, create_banner
 
 class NavBar(ft.Container):
     def __init__(self, isAdmin=True, current_page=None, buttons=[]):
@@ -42,6 +42,25 @@ class NavBar(ft.Container):
                 *self.buttons,
                 ft.Container(expand=True),
                 ft.Divider(2),
-                ft.Container(margin=ft.margin.only(top=10), content=ft.FilledButton("Logout", icon=ft.Icons.EXIT_TO_APP_ROUNDED, icon_color=ft.Colors.RED, bgcolor="#FEF9F9", color=ft.Colors.RED, elevation=0, width=180, height=30, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.W_700), alignment=ft.alignment.center_left, padding=10)))
+                ft.Container(margin=ft.margin.only(top=10), content=ft.FilledButton("Logout", on_click=self.logout, icon=ft.Icons.EXIT_TO_APP_ROUNDED, icon_color=ft.Colors.RED, bgcolor="#FEF9F9", color=ft.Colors.RED, elevation=0, width=180, height=30, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.W_700), alignment=ft.alignment.center_left, padding=10)))
             ]
         )
+
+
+    async def logout(self, e):
+        def go_to_menu(e):
+            self.current_page.page.data.set_active_user(None)
+            self.current_page.page.go("/", True)
+
+        popup = ft.AlertDialog(
+            modal=True,
+            title="Logout",
+            content=ft.Text("Are you sure you want to log out?", color=ft.Colors.GREY_700),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda e: self.current_page.page.close(popup)),
+                ft.TextButton("Logout", on_click=go_to_menu)
+            ],
+        )
+
+        self.current_page.page.open(popup)
+        self.current_page.page.update()

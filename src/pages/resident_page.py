@@ -117,8 +117,7 @@ class ResidentPage:
 
 
     async def show(self):
-        self.page.views.append(self.view)
-        self.page.update()
+        return self.view
 
     
     async def show_section(self, section):
