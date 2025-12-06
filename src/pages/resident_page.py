@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pages.sections.my_room import MyRoom
 from pages.sections.payment import Payment
+from pages.sections.requests import Requests
 from pages.components.navbar import NavBar
 from pages.components.navbar_button import NavBarButton
 
@@ -27,8 +28,25 @@ class ResidentPage:
         self.password = res[0][3]
         self.data = json.loads(res[0][4])
 
-        res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (int(self.data["room_id"]),))
-        
+        requests_data = []
+        for request_id in list(self.data["requests"]):
+            request_info = await self.page.data.custom_query("SELECT * FROM requests WHERE id = %s AND room_id = %s AND user_id = %s", (request_id, self.data["room_id"], self.id))
+            if len(request_info) == 0:
+                self.data["requests"].remove(request_id)
+                continue
+            
+            requests_data.append({
+                "issue": json.loads(request_info[0][2]),
+                "status": request_info[0][3], 
+                "urgency": request_info[0][4], 
+                "date_created": request_info[0][6],
+                "date_updated": request_info[0][7]
+            })
+
+        self.data.update({"requests_data": requests_data})
+
+        res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (self.data["room_id"],))
+
         self.data.update({"monthly_rent": res[0][1]})
         self.data.update({"bed_count": res[0][2]})
 
@@ -49,7 +67,7 @@ class ResidentPage:
             buttons=[
                 NavBarButton(ft.Icons.BED, "My Room", lambda e: self.page.run_task(self.show_section, MyRoom(self)), True),
                 NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, Payment(self))),
-                NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, ft.Container()))
+                NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, Requests(self)))
             ]
         )
         
@@ -70,7 +88,25 @@ class ResidentPage:
         self.password = res[0][3]
         self.data = json.loads(res[0][4])
 
-        res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (int(self.data["room_id"]),))
+        requests_data = []
+        for request_id in list(self.data["requests"]):
+            request_info = await self.page.data.custom_query("SELECT * FROM requests WHERE id = %s AND room_id = %s AND user_id = %s", (request_id, self.data["room_id"], self.id))
+            if len(request_info) == 0:
+                self.data["requests"].remove(request_id)
+                continue
+            
+            requests_data.append({
+                "issue": json.loads(request_info[0][2]),
+                "status": request_info[0][3], 
+                "urgency": request_info[0][4], 
+                "date_created": request_info[0][6],
+                "date_updated": request_info[0][7]
+            })
+
+
+        self.data.update({"requests_data": requests_data})
+            
+        res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (self.data["room_id"],))
         
         self.data.update({"monthly_rent": res[0][1]})
         self.data.update({"bed_count": res[0][2]})
