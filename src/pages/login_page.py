@@ -167,7 +167,8 @@ class LoginPage:
         popup = ft.AlertDialog(
             modal=True,
             icon=ft.Icon(ft.Icons.PERSON_ADD_ALT_1_ROUNDED, size=48),
-            content=ft.Container(ft.Column(
+            content=ft.Container(
+                ft.Column(
                     [
                         ft.Text("Create Account", size=24, color=ft.Colors.BLACK),
                         usernameTF, emailTF, passwordTF, confirm_passwordTF

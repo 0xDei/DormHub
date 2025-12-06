@@ -1,6 +1,10 @@
 import flet as ft
 import json
+from datetime import datetime
 
+from pages.sections.my_room import MyRoom
+from pages.sections.payment import Payment
+from pages.sections.requests import Requests
 from pages.components.navbar import NavBar
 from pages.components.navbar_button import NavBarButton
 
@@ -24,29 +28,91 @@ class ResidentPage:
         self.password = res[0][3]
         self.data = json.loads(res[0][4])
 
+        requests_data = []
+        all_requests = await self.page.data.custom_query("SELECT * FROM requests WHERE room_id = %s AND user_id = %s", (self.data["room_id"], self.id))
+        for request_info in all_requests:
+            requests_data.append({
+                "issue": json.loads(request_info[2]),
+                "status": request_info[3], 
+                "urgency": request_info[4], 
+                "date_created": request_info[6],
+                "date_updated": request_info[7]
+            })
+
+        self.data.update({"requests_data": requests_data})
+
+        res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (self.data["room_id"],))
+
+        self.data.update({"monthly_rent": res[0][1]})
+        self.data.update({"bed_count": res[0][2]})
+
+        roommates = []
+        roommate_data = []
+        for roommate_id in json.loads(res[0][0]):
+            if roommate_id != self.id:
+                user_info = await self.page.data.custom_query("SELECT username, data FROM users WHERE id = %s", (roommate_id,))
+                roommates.append(user_info[0][0])
+                roommate_data.append(json.loads(user_info[0][1]))
+
+        self.data.update({"roommates": roommates})
+        self.data.update({"roommate_data": roommate_data})
+
         self.navbar = NavBar(
             isAdmin=False, 
-            resident_page=self,
+            current_page=self,
             buttons=[
-                NavBarButton(ft.Icons.BED, "My Room", lambda e: lambda e: self.page.run_task(self.show_section, )),
-                NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, ft.Container())),
-                NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, ft.Container()))
+                NavBarButton(ft.Icons.BED, "My Room", lambda e: self.page.run_task(self.show_section, MyRoom(self)), True),
+                NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, Payment(self))),
+                NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, Requests(self)))
             ]
         )
-
+        
         self.view = ft.View(
             "/page-resident",
             [
-                ft.Row([self.navbar])
+                ft.Row([self.navbar], spacing=0, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
             ],
             bgcolor="#FFFBEB",
-            padding=5
+            padding=ft.padding.only(top=-4)
         )
 
 
     async def update_data(self):
         res = await self.page.data.get_user_by_id(self.id)
+        self.username = res[0][1]        
+        self.email = res[0][2]        
+        self.password = res[0][3]
         self.data = json.loads(res[0][4])
+
+        requests_data = []
+        all_requests = await self.page.data.custom_query("SELECT * FROM requests WHERE room_id = %s AND user_id = %s", (self.data["room_id"], self.id))
+        for request_info in all_requests:        
+            requests_data.append({
+                "issue": json.loads(request_info[2]),
+                "status": request_info[3], 
+                "urgency": request_info[4], 
+                "date_created": request_info[6],
+                "date_updated": request_info[7]
+            })
+
+
+        self.data.update({"requests_data": requests_data})
+            
+        res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (self.data["room_id"],))
+        
+        self.data.update({"monthly_rent": res[0][1]})
+        self.data.update({"bed_count": res[0][2]})
+
+        roommates = []
+        roommate_data = []
+        for roommate_id in json.loads(res[0][0]):
+            if roommate_id != self.id:
+                user_info = await self.page.data.custom_query("SELECT username, data FROM users WHERE id = %s", (roommate_id,))
+                roommates.append(user_info[0][0])
+                roommate_data.append(json.loads(user_info[0][1]))
+
+        self.data.update({"roommates": roommates})
+        self.data.update({"roommate_data": roommate_data})
 
 
     async def show(self):
@@ -54,9 +120,9 @@ class ResidentPage:
         self.page.update()
 
     
-    async def show_section(self, section=ft.Container()):
+    async def show_section(self, section):
         if len(self.view.controls[0].controls) > 1: self.view.controls[0].controls[1] = section
         else: self.view.controls[0].controls.append(section)
-
+        await self.update_data()
         self.view.update()
     

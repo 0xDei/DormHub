@@ -3,29 +3,34 @@ import flet as ft
 active_button = None
 
 class NavBarButton(ft.Container):
-    def __init__(self, icon=None, name="Button", callback=None):
+    def __init__(self, icon=None, name="Button", callback=None, is_selected=False):
+        global active_button
 
         super().__init__()
 
-        self.is_selected = False
+        self.is_selected = is_selected
 
         self.callback = callback
         self.padding=ft.padding.only(top=7, left=10, right=10, bottom=7)
-        self.bgcolor = ft.Colors.WHITE
+        self.bgcolor = "#FEF3C6" if self.is_selected else ft.Colors.WHITE
         self.border_radius = 7
         self.animate = ft.Animation(300, ft.AnimationCurve.EASE)
         self.margin = ft.margin.only(bottom=-5)
 
         self.content = ft.Row(
             [
-                icon if isinstance(icon, ft.Image) else ft.Icon(icon, size=24, color=ft.Colors.GREY_700),
-                ft.Text(name, size=12, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_600)
+                icon if isinstance(icon, ft.Image) else ft.Icon(icon, size=24, color="#E78B28" if self.is_selected else ft.Colors.GREY_700),
+                ft.Text(name, size=12, weight=ft.FontWeight.W_600, color="#E78B28" if self.is_selected else ft.Colors.GREY_600)
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
 
         self.on_hover = self.hover
         self.on_click = self.click
+        
+        if self.is_selected: 
+            if self.callback != None: self.callback.__call__(None)
+            active_button = self
 
 
     def hover(self, e):
