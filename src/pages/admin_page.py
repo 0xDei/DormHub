@@ -2,7 +2,9 @@ import flet as ft
 import json
 from datetime import datetime
 
-from pages.sections.section import Section
+from pages.sections.overview import Overview
+from pages.sections.rooms import Rooms
+from pages.sections.residents import Residents
 from pages.components.navbar import NavBar
 from pages.components.navbar_button import NavBarButton
 
@@ -10,27 +12,28 @@ class AdminPage:
     def __init__(self, page: ft.Page):
         self.page = page
         self.view = None
-        self.data = None
+        self.data = {}
         self.navbar = None
-        
+
 
     async def update_data(self):
-        print("update")
-
+       self.data.update({"residents": await self.page.data.get_all_users()})
+       self.data.update({"rooms": await self.page.data.get_all_rooms()})
+       self.data.update({"requests": await self.page.data.get_all_requests()})
 
     async def show(self):
         self.navbar = NavBar(
             isAdmin=True, 
             current_page=self,
             buttons=[
-                NavBarButton(ft.Icons.INSERT_CHART_OUTLINED_ROUNDED, "Overview", lambda e: self.page.run_task(self.show_section, Section()), True),
-                NavBarButton(ft.Icons.HOME_ROUNDED, "Rooms", lambda e: self.page.run_task(self.show_section, Section())),
-                NavBarButton(ft.Icons.PEOPLE_OUTLINE_ROUNDED, "Residents", lambda e: self.page.run_task(self.show_section, Section()))
+                NavBarButton(ft.Icons.INSERT_CHART_OUTLINED_ROUNDED, "Overview", lambda e: self.page.run_task(self.show_section, Overview(self)), True, "#FFEDD4", "#F66B2C"),
+                NavBarButton(ft.Icons.HOME_ROUNDED, "Rooms", lambda e: self.page.run_task(self.show_section, Rooms(self)), False, "#FFEDD4", "#F66B2C"),
+                NavBarButton(ft.Icons.PEOPLE_OUTLINE_ROUNDED, "Residents", lambda e: self.page.run_task(self.show_section, Residents(self)), False, "#FFEDD4", "#F66B2C")
             ]
         )
         
         self.view = ft.View(
-            "/page-resident",
+            "/active-admin",
             [
                 ft.Row([self.navbar], spacing=0, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
             ],

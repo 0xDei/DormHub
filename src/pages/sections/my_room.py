@@ -50,7 +50,7 @@ class MyRoom(Section):
                     create_info_card(
                         "Active Requests", 
                         [
-                            ft.Text("None" if active_requests == 0 else active_requests, size=24, text_align=ft.TextAlign.CENTER),
+                            ft.Text("None" if active_requests == 0 else active_requests, size=20, text_align=ft.TextAlign.CENTER),
                         ],
                         ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#F98851", size=28),
                         "right",

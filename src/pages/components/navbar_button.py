@@ -3,24 +3,26 @@ import flet as ft
 active_button = None
 
 class NavBarButton(ft.Container):
-    def __init__(self, icon=None, name="Button", callback=None, is_selected=False):
+    def __init__(self, icon=None, name="Button", callback=None, is_selected=False, hover_bgcolor="#FEF3C6", hover_color="#E78B28"):
         global active_button
 
         super().__init__()
 
         self.is_selected = is_selected
+        self.hover_bgcolor = hover_bgcolor
+        self.hover_color = hover_color
 
         self.callback = callback
         self.padding=ft.padding.only(top=7, left=10, right=10, bottom=7)
-        self.bgcolor = "#FEF3C6" if self.is_selected else ft.Colors.WHITE
+        self.bgcolor = self.hover_bgcolor if self.is_selected else ft.Colors.WHITE
         self.border_radius = 7
         self.animate = ft.Animation(300, ft.AnimationCurve.EASE)
         self.margin = ft.margin.only(bottom=-5)
 
         self.content = ft.Row(
             [
-                icon if isinstance(icon, ft.Image) else ft.Icon(icon, size=24, color="#E78B28" if self.is_selected else ft.Colors.GREY_700),
-                ft.Text(name, size=12, weight=ft.FontWeight.W_600, color="#E78B28" if self.is_selected else ft.Colors.GREY_600)
+                icon if isinstance(icon, ft.Image) else ft.Icon(icon, size=24, color=self.hover_color if self.is_selected else ft.Colors.GREY_700),
+                ft.Text(name, size=12, weight=ft.FontWeight.W_600, color=self.hover_color if self.is_selected else ft.Colors.GREY_600)
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
@@ -36,10 +38,10 @@ class NavBarButton(ft.Container):
     def hover(self, e):
         if self.is_selected: return
 
-        self.bgcolor = "#FEF3C6" if e.data == "true" else ft.Colors.WHITE
+        self.bgcolor = self.hover_bgcolor if e.data == "true" else ft.Colors.WHITE
         
-        self.content.controls[0].color = "#E78B28" if e.data == "true" else ft.Colors.GREY_700
-        self.content.controls[1].color = "#E78B28" if e.data == "true" else ft.Colors.GREY_600
+        self.content.controls[0].color = self.hover_color if e.data == "true" else ft.Colors.GREY_700
+        self.content.controls[1].color = self.hover_color if e.data == "true" else ft.Colors.GREY_600
 
         self.update()
 

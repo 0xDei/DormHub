@@ -54,7 +54,6 @@ class LoginPage:
             width=370
         )
 
-
         
         return ft.View(
             "/login-admin" if self.type == 0 else "/login-resident",
