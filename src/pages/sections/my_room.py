@@ -27,6 +27,11 @@ class MyRoom(Section):
         date = datetime.fromtimestamp(int(self.resident_page.data["due_date"]))
         due_date = f"{date.strftime('%b')} {date.day}, {date.year}"
         
+        active_requests = 0
+        for request_info in self.resident_page.data["requests_data"]:
+            if request_info["status"] == "completed": continue
+            active_requests += 1
+
         top_info = ft.Row(
             [
                 create_info_card(
@@ -44,7 +49,7 @@ class MyRoom(Section):
                 create_info_card(
                     "Active Requests", 
                     [
-                        ft.Text(str(len(self.resident_page.data["requests"])), size=24, text_align=ft.TextAlign.CENTER),
+                        ft.Text("None" if active_requests == 0 else active_requests, size=24, text_align=ft.TextAlign.CENTER),
                     ],
                     ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#F98851", size=28),
                     "right",
