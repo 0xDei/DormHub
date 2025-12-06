@@ -1,37 +1,47 @@
-import sys
-sys.path.insert(1, 'pages/')
-sys.path.insert(2, 'utils/')
-
 import flet as ft
+
 from database import Database
 from page_handler import PageHandler
-
+from utils.element_factory import close_active_banner
 
 def main(page: ft.Page):
     page.title = "DormHub"
-    page.bgcolor = "#FFFAEA"
-    page.window.width = 1280
+    page.window.width = 900
     page.window.height = 720
     page.window.resizable = False
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.data = Database()
 
+    page.data = Database()
     ph = PageHandler(page)
 
-    async def rout_change(route):
+    async def route_change(route):
         try:
             page.views.clear()
-            await ph.set_root_page()
-            if page.route == "/login-admin": await ph.show_login_page(0)
-            if page.route == "/login-resident": await ph.show_login_page(1)
+            close_active_banner(page)
+
+            match page.route:
+                case '/':
+                    page.views.append(await ph.set_root_page())
+                case "/login-admin": 
+                    page.views.append(await ph.show_login_page(0))
+                case "/login-resident": 
+                    page.views.append(await ph.show_login_page(1))
+                case "/active-admin": 
+                    page.views.append(await ph.show_admin_page())
+                case "/active-resident": 
+                    page.views.append(await ph.show_resident_page())
+
+            page.update()
         except Exception as e: print("Error: ", e)
 
-    def view_pop():
-        page.views.pop()
-        top_view = page.views[-1]
-        page.go(top_view.route)
 
-    page.on_route_change = rout_change
+    def view_pop(e):
+        page.views.pop()
+        if len(page.views) == 0:
+            return
+        page.go(page.views[-1].route)
+
+    page.on_route_change = route_change
     page.on_view_pop = view_pop
 
     page.go(page.route)
