@@ -106,7 +106,7 @@ class PageHandler:
             return
 
         self.active_portal = ResidentPage(self.page, self.page.data.get_active_user())
-        await self.active_portal.load_async()
+        await self.active_portal.update_data()
         return await self.active_portal.show()
 
         
