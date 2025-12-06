@@ -36,11 +36,58 @@ class Database:
             self.pool = await aiomysql.create_pool(host="localhost", user="root", password="djpim!", db="dormhub_app", autocommit=True)
             create_banner(page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINED, color=ft.Colors.GREEN), "You are now connected!", ft.Colors.GREEN_500)
             self.connected = True
+            await self.create_tables()
+
         except Exception as e:
             create_banner(page, ft.Colors.RED_100, ft.Icon(ft.Icons.WARNING_AMBER_OUTLINED, color=ft.Colors.RED), f"Could not connect to database! Please check your internet connection.", ft.Colors.RED)
 
 
-    async def custom_query(self, query, params):
+    async def create_tables(self):
+        await self.custom_query(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT,
+                username VARCHAR(24),
+                email TEXT,
+                password TEXT,
+                data TEXT,
+                PRIMARY KEY(id)
+            )
+            """
+        )
+
+        await self.custom_query(
+            """
+            CREATE TABLE IF NOT EXISTS rooms (
+                id INT AUTO_INCREMENT,
+                amenities TEXT,
+                residents TEXT,
+                bed_count INT DEFAULT 0,
+                monthly_rent INT,
+                current_status TEXT,
+                PRIMARY KEY(id)
+            )
+            """
+        )
+        
+        await self.custom_query(
+            """
+            CREATE TABLE IF NOT EXISTS requests (
+                id INT AUTO_INCREMENT,
+                room_id INT,
+                issue TEXT,
+                current_status TEXT,
+                urgency TEXT,
+                user_id INT,
+                date_created TEXT,
+                date_updated TEXT,
+                PRIMARY KEY(id)
+            )
+            """
+        )
+
+
+    async def custom_query(self, query, params=[]):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
                 await cur.execute(query, params)
