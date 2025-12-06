@@ -29,18 +29,14 @@ class ResidentPage:
         self.data = json.loads(res[0][4])
 
         requests_data = []
-        for request_id in list(self.data["requests"]):
-            request_info = await self.page.data.custom_query("SELECT * FROM requests WHERE id = %s AND room_id = %s AND user_id = %s", (request_id, self.data["room_id"], self.id))
-            if len(request_info) == 0:
-                self.data["requests"].remove(request_id)
-                continue
-            
+        all_requests = await self.page.data.custom_query("SELECT * FROM requests WHERE room_id = %s AND user_id = %s", (self.data["room_id"], self.id))
+        for request_info in all_requests:
             requests_data.append({
-                "issue": json.loads(request_info[0][2]),
-                "status": request_info[0][3], 
-                "urgency": request_info[0][4], 
-                "date_created": request_info[0][6],
-                "date_updated": request_info[0][7]
+                "issue": json.loads(request_info[2]),
+                "status": request_info[3], 
+                "urgency": request_info[4], 
+                "date_created": request_info[6],
+                "date_updated": request_info[7]
             })
 
         self.data.update({"requests_data": requests_data})
@@ -89,18 +85,14 @@ class ResidentPage:
         self.data = json.loads(res[0][4])
 
         requests_data = []
-        for request_id in list(self.data["requests"]):
-            request_info = await self.page.data.custom_query("SELECT * FROM requests WHERE id = %s AND room_id = %s AND user_id = %s", (request_id, self.data["room_id"], self.id))
-            if len(request_info) == 0:
-                self.data["requests"].remove(request_id)
-                continue
-            
+        all_requests = await self.page.data.custom_query("SELECT * FROM requests WHERE room_id = %s AND user_id = %s", (self.data["room_id"], self.id))
+        for request_info in all_requests:        
             requests_data.append({
-                "issue": json.loads(request_info[0][2]),
-                "status": request_info[0][3], 
-                "urgency": request_info[0][4], 
-                "date_created": request_info[0][6],
-                "date_updated": request_info[0][7]
+                "issue": json.loads(request_info[2]),
+                "status": request_info[3], 
+                "urgency": request_info[4], 
+                "date_created": request_info[6],
+                "date_updated": request_info[7]
             })
 
 
@@ -121,7 +113,6 @@ class ResidentPage:
 
         self.data.update({"roommates": roommates})
         self.data.update({"roommate_data": roommate_data})
-
 
 
     async def show(self):

@@ -2,7 +2,7 @@ import flet as ft
 from datetime import datetime
 
 from pages.sections.section import Section
-from utils.element_factory import create_info_card, create_remark
+from utils.element_factory import create_info_card, create_remark, create_banner
 
 class Requests(Section):
     def __init__(self, resident_page):
@@ -10,18 +10,37 @@ class Requests(Section):
 
         self.resident_page = resident_page
 
-        header = ft.Column(
+        header = ft.Row(
             [
-                ft.Row(
+                ft.Column(
                     [
-                        ft.Text("Maintenance Requests", color="#E78B28", size=16, weight=ft.FontWeight.W_500),
-                        ft.Icon(ft.Icons.EDIT_DOCUMENT, size=24, color=ft.Colors.GREY_500)
+                        ft.Row(
+                            [
+                                ft.Text("Maintenance Requests", color="#E78B28", size=16, weight=ft.FontWeight.W_500),
+                                ft.Icon(ft.Icons.EDIT_DOCUMENT, size=24, color=ft.Colors.GREY_500)
+                            ],
+                            spacing=3.5,
+                        ),
+                        ft.Text("Submit and track your maintenance requests", size=12, weight=ft.FontWeight.W_500)
                     ],
-                    spacing=3.5
+                    spacing=1,
+                    expand=True
                 ),
-                ft.Text("Submit and track your maintenance requests", size=12, weight=ft.FontWeight.W_500)
-            ],
-            spacing=1
+                ft.Container(
+                    ft.FilledButton(
+                        "New Request", 
+                        icon=ft.Icons.ADD, 
+                        icon_color=ft.Colors.WHITE, 
+                        bgcolor="#FE9A00", 
+                        color=ft.Colors.WHITE, 
+                        elevation=0, 
+                        width=120, 
+                        height=30, 
+                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD), alignment=ft.alignment.center, padding=10),
+                        on_click=self.show_add_request
+                    )
+                )
+            ]
         )
 
         pending_requests = []
@@ -162,7 +181,7 @@ class Requests(Section):
             ),
             bgcolor=ft.Colors.WHITE,
             border_radius=15,
-            height=350,
+            height=550,
             padding=ft.padding.only(left=20, top=17, right=20, bottom=20),
             border=ft.border.all(2, "#FEF3C6")
         )
@@ -186,3 +205,88 @@ class Requests(Section):
             ),
             expand=True
         )
+
+    
+    async def show_add_request(self, e):
+        titleTF = ft.TextField(label="Title", hint_text="Enter your request/concern", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.BLACK), border_radius=10, border_width=1, bgcolor="#F3F3F5", autofocus=True)
+        urgencyDD = ft.Dropdown(
+            label="Urgency",
+            options=[
+                ft.DropdownOption(key="low", content=create_remark("low", "#808899", "#F3F4F6")),
+                ft.DropdownOption(key="medium", content=create_remark("medium", "#E18526", "#FFEDD4")),
+                ft.DropdownOption(key="high", content=create_remark("high", "#D66875", "#FFE2E2")),
+            ],
+            border_radius=10,
+            bgcolor="#F3F3F5",
+            border_width=1
+        )
+        descTF = ft.TextField(label="Description", hint_text="Describe your request/concern", hint_style=ft.TextStyle(color="#B8B8C1"), text_style=ft.TextStyle(color=ft.Colors.GREY_700), border_radius=10, border_width=1, bgcolor="#F3F3F5", multiline=True, min_lines=3, max_lines=5)
+
+        popup = ft.AlertDialog(
+            modal=True,
+            content=ft.Container(
+                ft.Column(
+                    [
+                        ft.Container(ft.Text("Create Request", size=24, color=ft.Colors.BLACK), margin=ft.margin.only(bottom=30)),
+                        ft.Row(
+                            [
+                                titleTF, urgencyDD
+                            ],
+                            spacing=10,
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ),
+                        descTF
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20
+                ),
+                margin=ft.margin.only(top=30),
+                width=470
+            ),
+            actions=[
+                ft.FilledButton("Cancel Request", expand=True, height=45, width=200, bgcolor="#E6E8EE", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=14)), color=ft.Colors.BLACK, on_click=lambda e: self.page.close(popup)),
+                ft.FilledButton("Add Request", expand=True, height=35, width=200, bgcolor="#FF6900", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=14, weight=ft.FontWeight.BOLD)), color=ft.Colors.WHITE, on_click=lambda e: self.resident_page.page.run_task(self.check_add_request, titleTF, urgencyDD, descTF, popup))
+            ],
+            shape=ft.RoundedRectangleBorder(radius=15),
+            actions_alignment=ft.MainAxisAlignment.CENTER
+        )
+
+        self.resident_page.page.open(popup)
+        self.resident_page.page.update()
+
+
+    async def check_add_request(self, title, urgency, desc, popup):
+        title_value = title.value.strip()
+        desc_value = desc.value.strip()
+        desc_value = desc_value.replace('\n', ' ')
+
+        title.error_text = ""
+        desc.error_text = ""
+        urgency.error_text = ""
+        has_error = False
+        
+        if len(title_value) < 6 or len(title_value) > 24:
+            title.error_text = "[!] Title must be > 6 but < 24 characters long"
+            has_error = True
+
+        if len(desc_value) < 6 or len(desc_value) > 90:
+            desc.error_text = "[!] Description must be > 6 but < 90 characters long"
+            has_error = True
+
+        if urgency.value is None:
+            urgency.error_text = "[!] Must Select"
+            has_error = True
+
+        if has_error: 
+            self.resident_page.page.update()
+            return
+
+        stmt = await self.resident_page.page.data.create_request(self.resident_page.data["room_id"], title_value, desc_value, urgency.value, self.resident_page.id)
+        self.resident_page.page.close(popup)
+        create_banner(self.resident_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.ADD, color=ft.Colors.GREEN), f"Successfully created a Request!", ft.Colors.GREEN_500)
+        self.resident_page.page.update()
+        await self.resident_page.show_section(Section())
+        await self.resident_page.show_section(Requests(self.resident_page))
+
+
+        
