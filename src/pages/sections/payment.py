@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 
 from pages.sections.section import Section
-from utils.element_factory import create_info_card
+from utils.element_factory import create_info_card, create_remark
 
 class Payment(Section):
     def __init__(self, resident_page):
@@ -112,7 +112,7 @@ class Payment(Section):
                     [
                         ft.Text(next_due_date_formatted, text_align=ft.TextAlign.CENTER, size=16)
                     ],
-                    ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#4D84FC", size=28),
+                    ft.Icon(ft.Icons.CALENDAR_MONTH_OUTLINED, color="#4D84FC", size=28),
                     "left",
                     "#DBEAFE",
                     250,
@@ -134,7 +134,7 @@ class Payment(Section):
                     width=24 * 1.5,
                     height=24 * 1.5
                 )
-                remark = ft.Container(ft.Text("late", weight=ft.FontWeight.BOLD, size=12, color="#DB805C"), width=60, height=20, bgcolor="#FFEDD4", border_radius=50, alignment=ft.alignment.center)
+                remark = create_remark("late", color="#DB805C", bgcolor="#FFEDD4")
             else:
                 leading_icon = ft.Container(
                     ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE_ROUNDED, color="#00cc0a", size=24),
@@ -143,7 +143,7 @@ class Payment(Section):
                     width=24 * 1.5,
                     height=24 * 1.5
                 )
-                remark = ft.Container(ft.Text("on time", weight=ft.FontWeight.BOLD, size=12, color="#00cc0a"), width=60, height=20, bgcolor="#b3ffb6", border_radius=50, alignment=ft.alignment.center)
+                remark = create_remark("on time", color="#00cc0a", bgcolor="#b3ffb6")
 
             date = datetime.fromtimestamp(ph_info["date"])
             ph_contents.append(
@@ -157,8 +157,8 @@ class Payment(Section):
                                     ft.Text(date.strftime("%m/%d/%Y"), size=10, color=ft.Colors.GREY_500)
                                 ], spacing=0, expand=True
                             ),
-                            ft.Text(f"₱ {ph_info['amount']:,}", size=12, weight=ft.FontWeight.W_900),
-                            remark
+                            remark,
+                            ft.Text(f"₱ {ph_info['amount']:,}", size=12, weight=ft.FontWeight.W_900)
                         ]
                     ),
                     padding=10,

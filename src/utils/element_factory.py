@@ -74,6 +74,9 @@ def create_info_card(name, content, icon, icon_placement, bgcolor, width, height
         border=ft.border.all(2, "#FEF3C6")
     )
 
+def create_remark(remark, color, bgcolor):
+    return ft.Container(ft.Text(remark, weight=ft.FontWeight.BOLD, size=12, color=color, text_align=ft.TextAlign.CENTER), padding=ft.padding.only(left=8, right=8), height=17, bgcolor=bgcolor, border_radius=50, alignment=ft.alignment.center)
+
 def create_banner(page, color, icon, text, buttonColor):
     global active_banner
 
