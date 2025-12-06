@@ -115,6 +115,6 @@ class PageHandler:
         if self.page.data.connected == False: return
 
         self.active_portal = AdminPage(self.page)
-        await self.active_portal.load_async()
+        await self.active_portal.update_data()
         return await self.active_portal.show()
 

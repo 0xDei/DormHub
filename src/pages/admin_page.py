@@ -12,9 +12,13 @@ class AdminPage:
         self.view = None
         self.data = None
         self.navbar = None
+        
+
+    async def update_data(self):
+        print("update")
 
 
-    async def load_async(self):
+    async def show(self):
         self.navbar = NavBar(
             isAdmin=True, 
             current_page=self,
@@ -33,13 +37,6 @@ class AdminPage:
             bgcolor="#FFFBEB",
             padding=ft.padding.only(top=-4)
         )
-
-
-    async def update_data(self):
-        print("update")
-
-
-    async def show(self):
         return self.view
 
     
