@@ -48,7 +48,12 @@ class AdminAnnouncements(Section):
                     ft.Column([
                         ft.Row([
                             ft.Text(p[1], weight="bold", size=16, expand=True),
-                            ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color="red", on_click=lambda e, pid=pid: self.admin_page.page.run_task(self.delete_post, pid))
+                            # Updated: Calls show_delete_confirmation instead of delete_post directly
+                            ft.IconButton(
+                                ft.Icons.DELETE_OUTLINE, 
+                                icon_color="red", 
+                                on_click=lambda e, pid=pid: self.admin_page.page.run_task(self.show_delete_confirmation, pid)
+                            )
                         ]),
                         ft.Text(p[2], size=13, color="#444444"),
                         ft.Divider(),
@@ -89,9 +94,25 @@ class AdminAnnouncements(Section):
         )
         self.admin_page.page.open(dlg)
 
-    async def delete_post(self, pid):
-        await self.admin_page.page.data.delete_announcement(pid)
-        await self.load_data()
+    async def show_delete_confirmation(self, pid):
+        """Shows a confirmation dialog before deleting an announcement."""
+        
+        async def confirm_delete(e):
+            # Perform deletion
+            await self.admin_page.page.data.delete_announcement(pid)
+            self.admin_page.page.close(dlg)
+            await self.load_data()
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("Delete Announcement"),
+            content=ft.Text("Are you sure you want to delete this post? This action cannot be undone."),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda e: self.admin_page.page.close(dlg)),
+                ft.FilledButton("Delete", bgcolor="red", on_click=confirm_delete)
+            ],
+            actions_alignment=ft.MainAxisAlignment.END
+        )
+        self.admin_page.page.open(dlg)
 
     async def show_comments(self, pid):
         self.reply_parent_id = None # Reset
@@ -103,7 +124,7 @@ class AdminAnnouncements(Section):
 
         comment_list = ft.ListView(expand=True, spacing=10)
 
-        # --- FIX: Define post_comment and new_comment_tf BEFORE the loop ---
+        # Helper defined before loop to avoid UnboundLocalError
         async def post_comment(e):
             if not new_comment_tf.value: return
             # Admin User ID = 0, Username = "Landlord"
@@ -117,13 +138,11 @@ class AdminAnnouncements(Section):
             text_size=12, border_radius=20, content_padding=10, expand=True,
             on_submit=lambda e: self.admin_page.page.run_task(post_comment, e)
         )
-        # -------------------------------------------------------------------
         
         if not comments_data:
             comment_list.controls.append(ft.Text("No comments yet.", color="grey", italic=True))
         else:
             for p in parents:
-                # Render Parent
                 p_dt = datetime.fromtimestamp(int(p[5])).strftime("%b %d %H:%M")
                 p_id = p[0]
                 
@@ -135,8 +154,8 @@ class AdminAnnouncements(Section):
                     r_dt = datetime.fromtimestamp(int(r[5])).strftime("%b %d %H:%M")
                     comment_list.controls.append(
                         ft.Container(
-                            self.create_comment_bubble(r[3], r[4], r_dt, p_id, new_comment_tf), # Reply to parent ID logic
-                            padding=ft.padding.only(left=20) # Indent reply
+                            self.create_comment_bubble(r[3], r[4], r_dt, p_id, new_comment_tf),
+                            padding=ft.padding.only(left=20)
                         )
                     )
 

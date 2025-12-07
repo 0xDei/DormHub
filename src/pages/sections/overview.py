@@ -1,5 +1,5 @@
 import flet as ft
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import calendar
 import asyncio
@@ -15,6 +15,22 @@ class Overview(Section):
         self.admin_page = admin_page
         self.running = False # Flag to control the update loop
 
+        # --- PERSISTENT CONTROLS (FIX) ---
+        self.activity_items_column = ft.Column(spacing=10) # For Recent Activity
+        self.maintenance_items_column = ft.Column(spacing=10) # For Urgent Maintenance
+        
+        self.recent_activity_card = self.create_section_card(
+            "Recent Activity",
+            self.activity_items_column,
+            col={"xs": 12, "md": 6}
+        )
+        self.urgent_maintenance_card = self.create_section_card(
+            "Urgent Maintenance",
+            self.maintenance_items_column,
+            col={"xs": 12, "md": 6}
+        )
+        # ---------------------------------
+
         # --- UI Containers (Responsive) ---
         self.info_cards_container = ft.ResponsiveRow(
             spacing=10,
@@ -27,6 +43,7 @@ class Overview(Section):
         )
 
         self.bottom_section_container = ft.ResponsiveRow(
+            controls=[self.recent_activity_card, self.urgent_maintenance_card], # Use persistent controls
             spacing=20,
             run_spacing=20,
         )
@@ -93,6 +110,7 @@ class Overview(Section):
             rooms_data = await self.admin_page.page.data.get_all_rooms()
             requests_data = await self.admin_page.page.data.get_all_requests()
             users_data = await self.admin_page.page.data.get_all_users()
+            announcements_data = await self.admin_page.page.data.get_announcements()
             
             # Helper to parse room rent
             room_rents = {str(r[0]): r[4] for r in rooms_data}
@@ -108,9 +126,11 @@ class Overview(Section):
             
             now = datetime.now()
             start_of_month = datetime(now.year, now.month, 1).timestamp()
+            
+            # Cutoff for "Recent" activities (30 days ago)
+            thirty_days_ago_ts = (now - timedelta(days=30)).timestamp() 
 
             activities = []
-            resident_move_ins = [] # List of timestamps for occupancy trend
 
             for user in users_data:
                 try:
@@ -120,13 +140,8 @@ class Overview(Section):
                     if room_id != "N/A":
                         residents_count += 1
                         projected_income += room_rents.get(room_id, 0)
-                        
-                        # Collect Move-in Date for Trend Calculation
-                        move_in_str = u_data.get("move_in_date", "N/A")
-                        if move_in_str != "N/A":
-                            resident_move_ins.append(int(move_in_str))
                     
-                    # Payment History
+                    # Process Payments (Activity Source 1)
                     for pay in u_data.get("payment_history", []):
                         p_date = pay.get("date", 0)
                         p_amount = pay.get("amount", 0)
@@ -140,25 +155,29 @@ class Overview(Section):
                             "desc": f"₱ {p_amount:,}",
                             "timestamp": p_date,
                             "icon": ft.Icons.ATTACH_MONEY,
-                            "color": ft.Colors.GREEN
+                            "color": ft.Colors.GREEN_700
                         })
 
-                    # Move-in Activity Log
+                    # Process Move-ins (Activity Source 2)
                     move_in = u_data.get("move_in_date", "N/A")
-                    if move_in != "N/A":
-                        activities.append({
-                            "type": "move-in",
-                            "title": f"{user[1]} moved in",
-                            "desc": f"Room {room_id}",
-                            "timestamp": int(move_in),
-                            "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
-                            "color": ft.Colors.BLUE
-                        })
+                    if move_in != "N/A" and room_id != "N/A":
+                        move_in_ts = int(move_in)
+                        
+                        # Only include move-ins from the last 30 days
+                        if move_in_ts > thirty_days_ago_ts:
+                            activities.append({
+                                "type": "move-in",
+                                "title": f"{user[1]} moved in",
+                                "desc": f"Room {room_id}",
+                                "timestamp": move_in_ts,
+                                "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
+                                "color": ft.Colors.BLUE
+                            })
 
                 except Exception as ex:
                     print(f"Error parsing user {user[0]}: {ex}")
 
-            # Requests Stats
+            # Process Requests (Activity Source 3)
             requests_count = 0
             urgent_count = 0
             urgent_maintenance_list = []
@@ -184,76 +203,71 @@ class Overview(Section):
                 
                 activities.append({
                     "type": "request",
-                    "title": "Maintenance Request",
-                    "desc": f"Room {req[1]} - {status}",
+                    "title": "Maintenance Request Filed",
+                    "desc": f"Room {req[1]} - Status: {status.title()}",
                     "timestamp": date_created,
                     "icon": ft.Icons.BUILD_CIRCLE_OUTLINED,
-                    "color": ft.Colors.ORANGE
+                    "color": ft.Colors.ORANGE_700
                 })
 
-            activities.sort(key=lambda x: x["timestamp"], reverse=True)
-            recent_activities = activities[:5]
+            # Process Announcements (Activity Source 4)
+            for ann in announcements_data:
+                activities.append({
+                    "type": "announcement",
+                    "title": f"New Announcement Posted",
+                    "desc": ann[1],
+                    "timestamp": int(ann[3]),
+                    "icon": ft.Icons.CAMPAIGN_OUTLINED,
+                    "color": ft.Colors.RED_ACCENT_700
+                })
 
-            # 3. Calculate Occupancy Trend Data (Last 6 Months)
+
+            activities.sort(key=lambda x: x["timestamp"], reverse=True)
+            recent_activities = activities[:5] # Get top 5 most relevant
+
+            # 3. Build UI Elements
+            bed_count_safe = max(total_beds, 1) 
+            percent = (residents_count / bed_count_safe) * 100
+
+            # --- Top Stats Cards (Logic remains the same) ---
+            card_col = {"xs": 12, "sm": 6, "md": 3}
+
+            self.info_cards_container.controls = [
+                self.create_stat_card("Total Beds", str(total_beds), "Capacity", ft.Icon(ft.Icons.HOME_OUTLINED), "#FFEDD4", "#FF6900", col=card_col),
+                self.create_stat_card("Residents", str(residents_count), f"{percent:.0f}% Occupancy", ft.Icon(ft.Icons.PEOPLE_OUTLINE), "#FEF3C6", "#E68C2A", col=card_col),
+                self.create_stat_card("Est. Monthly Income", f"₱ {projected_income:,}", "Based on occupancy", ft.Icon(ft.Icons.ATTACH_MONEY), "#DBFCE7", "#14AD4E", col=card_col),
+                self.create_stat_card("Pending Tasks", str(requests_count), f"{urgent_count} Urgent", ft.Icon(ft.Icons.ERROR_OUTLINE), "#FFE2E2", "#EC2C33", col=card_col),
+            ]
+
+            # --- Charts (Logic remains the same) ---
+            
+            # 1. Occupancy Trend (Line Chart)
+            resident_move_ins = [int(json.loads(user[4]).get("move_in_date")) for user in users_data if json.loads(user[4]).get("move_in_date") != "N/A" and json.loads(user[4]).get("room_id") != "N/A"]
+
             trend_points = []
             trend_labels = []
+            now = datetime.now()
             
-            # Loop backwards from 5 to 0 (5 months ago to today)
-            for i in range(5, -1, -1):
-                # Calculate month and year
+            # Calculates historical occupancy for the LAST 12 MONTHS
+            for i in range(11, -1, -1): 
                 target_month = now.month - i
                 target_year = now.year
-                
-                # Adjust for year wraparound (e.g. Jan - 1 month = Dec previous year)
                 while target_month <= 0:
                     target_month += 12
                     target_year -= 1
                 
-                # Get the last second of that target month to count everyone who moved in by then
                 _, last_day = calendar.monthrange(target_year, target_month)
                 month_end_ts = datetime(target_year, target_month, last_day, 23, 59, 59).timestamp()
                 
-                # Count residents who moved in <= this timestamp
-                # Note: This simple logic assumes residents don't move out (since we don't track move-out dates yet)
                 count = sum(1 for mid in resident_move_ins if mid <= month_end_ts)
                 
                 trend_points.append(count)
-                # Label ex: "Nov", "Dec"
                 trend_labels.append(datetime(target_year, target_month, 1).strftime("%b"))
 
-
-            # 4. Build UI Elements
-            bed_count_safe = max(total_beds, 1) 
-            percent = (residents_count / bed_count_safe) * 100
-
-            # --- Top Stats Cards ---
-            card_col = {"xs": 12, "sm": 6, "md": 3}
-
-            self.info_cards_container.controls = [
-                self.create_stat_card("Total Beds", str(total_beds), "Capacity", ft.Icons.HOME_OUTLINED, "#FFEDD4", "#FF6900", col=card_col),
-                self.create_stat_card("Residents", str(residents_count), f"{percent:.0f}% Occupancy", ft.Icons.PEOPLE_OUTLINE, "#FEF3C6", "#E68C2A", col=card_col),
-                self.create_stat_card("Est. Monthly Income", f"₱ {projected_income:,}", "Based on occupancy", ft.Icons.ATTACH_MONEY, "#DBFCE7", "#14AD4E", col=card_col),
-                self.create_stat_card("Pending Tasks", str(requests_count), f"{urgent_count} Urgent", ft.Icons.ERROR_OUTLINE, "#FFE2E2", "#EC2C33", col=card_col),
-            ]
-
-            # --- Charts ---
-            
-            # Occupancy Trend (Line Chart)
-            # Create Chart Data Points
-            line_data_points = []
-            for i, val in enumerate(trend_points):
-                line_data_points.append(
-                    ft.LineChartDataPoint(i, val)
-                )
-
+            line_data_points = [ft.LineChartDataPoint(i, val) for i, val in enumerate(trend_points)]
             max_occ = max(max(trend_points) if trend_points else 0, total_beds, 1) + 2
             
-            # Generate Custom Axis Labels based on month names
-            bottom_axis_labels = []
-            for i, label in enumerate(trend_labels):
-                bottom_axis_labels.append(
-                    ft.ChartAxisLabel(value=i, label=ft.Text(label, size=10, weight=ft.FontWeight.BOLD))
-                )
+            bottom_axis_labels = [ft.ChartAxisLabel(value=i, label=ft.Text(label, size=10, weight=ft.FontWeight.BOLD)) for i, label in enumerate(trend_labels)]
 
             chart_col = {"xs": 12, "md": 6}
 
@@ -270,10 +284,7 @@ class Overview(Section):
                             below_line_bgcolor=ft.Colors.with_opacity(0.1, "#FF6900")
                         )
                     ],
-                    bottom_axis=ft.ChartAxis(
-                        labels=bottom_axis_labels,
-                        labels_size=20,
-                    ),
+                    bottom_axis=ft.ChartAxis(labels=bottom_axis_labels, labels_size=20),
                     left_axis=ft.ChartAxis(labels_size=25),
                     border=ft.border.all(0, ft.Colors.TRANSPARENT),
                     horizontal_grid_lines=ft.ChartGridLines(
@@ -287,7 +298,7 @@ class Overview(Section):
                 col=chart_col
             )
 
-            # Revenue (Bar Chart)
+            # 2. Revenue (Bar Chart)
             max_rev = max(projected_income, actual_income_this_month, 1)
             step_rev = max(1000, int(max_rev // 4))
             labels_rev = [ft.ChartAxisLabel(i, ft.Text(f"{i//1000}k", size=10)) for i in range(0, int(max_rev * 1.2), step_rev)]
@@ -325,7 +336,7 @@ class Overview(Section):
 
             self.charts_container.controls = [occupancy_chart, revenue_chart]
 
-            # --- Bottom Section ---
+            # --- Bottom Section Update ---
             activity_col = {"xs": 12, "md": 6}
             
             activity_display_items = []
@@ -333,47 +344,22 @@ class Overview(Section):
                 activity_display_items.append(ft.Text("No recent activity", color=ft.Colors.GREY_400))
             else:
                 for act in recent_activities:
-                    now_ts = datetime.now().timestamp()
-                    diff = now_ts - act["timestamp"]
+                    # FIX: Explicitly convert to int to prevent floating point issues in subtraction
+                    now_ts = int(datetime.now().timestamp())
+                    event_ts = int(act["timestamp"])
+                    diff = now_ts - event_ts
                     
                     if diff < 60: time_str = "Just now"
                     elif diff < 3600: time_str = f"{int(diff/60)}m ago"
                     elif diff < 86400: time_str = f"{int(diff/3600)}h ago"
                     else: time_str = f"{int(diff/86400)}d ago"
 
-                    activity_display_items.append(
-                        ft.Container(
-                            ft.Row(
-                                [
-                                    ft.Container(
-                                        ft.Icon(act["icon"], color=act["color"], size=16),
-                                        bgcolor=ft.Colors.with_opacity(0.1, act["color"]),
-                                        padding=8,
-                                        border_radius=50
-                                    ),
-                                    ft.Column(
-                                        [
-                                            ft.Text(act["title"], size=12, weight=ft.FontWeight.W_600),
-                                            ft.Text(act["desc"], size=10, color=ft.Colors.GREY_500)
-                                        ],
-                                        spacing=2,
-                                        expand=True
-                                    ),
-                                    ft.Text(time_str, size=10, color=ft.Colors.GREY_400)
-                                ],
-                                alignment=ft.MainAxisAlignment.START,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER
-                            ),
-                            padding=ft.padding.only(bottom=5)
-                        )
-                    )
+                    # Refactored: Call helper function for creating the activity item UI
+                    activity_display_items.append(self.create_activity_item(act, time_str))
 
-            recent_activity_card = self.create_section_card(
-                "Recent Activity",
-                ft.Column(activity_display_items, spacing=10),
-                col=activity_col
-            )
-
+            # FIX: Only update the controls of the persistent column
+            self.activity_items_column.controls = activity_display_items
+            
             maintenance_display_items = []
             if not urgent_maintenance_list:
                 maintenance_display_items.append(ft.Text("No urgent issues! Good job.", size=12, color=ft.Colors.GREY_400))
@@ -407,13 +393,8 @@ class Overview(Section):
                         )
                     )
 
-            urgent_maintenance_card = self.create_section_card(
-                "Urgent Maintenance",
-                ft.Column(maintenance_display_items, spacing=10),
-                col=activity_col
-            )
-
-            self.bottom_section_container.controls = [recent_activity_card, urgent_maintenance_card]
+            # FIX: Only update the controls of the persistent column
+            self.maintenance_items_column.controls = maintenance_display_items
 
             if self.running:
                 self.admin_page.page.update()
@@ -423,9 +404,38 @@ class Overview(Section):
             import traceback
             traceback.print_exc()
 
-    # --- Helper Methods for UI Styling ---
+    # --- New Helper for Activity Item UI ---
+    def create_activity_item(self, act, time_str):
+        return ft.Container(
+            ft.Row(
+                [
+                    ft.Container(
+                        ft.Icon(act["icon"], color=act["color"], size=16),
+                        bgcolor=ft.Colors.with_opacity(0.1, act["color"]),
+                        padding=8,
+                        border_radius=50
+                    ),
+                    ft.Column(
+                        [
+                            ft.Text(act["title"], size=12, weight=ft.FontWeight.W_600),
+                            ft.Text(act["desc"], size=10, color=ft.Colors.GREY_500),
+                        ],
+                        spacing=2,
+                        expand=True
+                    ),
+                    ft.Text(time_str, size=10, color=ft.Colors.GREY_400)
+                ],
+                alignment=ft.MainAxisAlignment.START,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER
+            ),
+            padding=ft.padding.only(bottom=5)
+        )
+    # ----------------------------------------
+
+    # --- Helper Methods for UI Styling (Logic remains the same) ---
 
     def create_stat_card(self, title, value, subtext, icon, bg_color, icon_color, col=None):
+        icon_size = icon.size if icon.size is not None else 24
         return ft.Container(
             content=ft.Row(
                 [
@@ -439,7 +449,7 @@ class Overview(Section):
                         expand=True
                     ),
                     ft.Container(
-                        ft.Icon(icon, color=icon_color, size=24),
+                        ft.Icon(icon.name, color=icon_color, size=icon_size),
                         bgcolor="white",
                         border_radius=10,
                         padding=10,
