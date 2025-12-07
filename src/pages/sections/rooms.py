@@ -69,7 +69,7 @@ class Rooms(Section):
         file_picker = ft.FilePicker(on_result=on_result)
         self.admin_page.page.overlay.append(file_picker)
 
-        upload_pic = ft.Row([ft.TextField("/placeholder.png", label="Select Thumbnail", disabled=True), ft.ElevatedButton("Select", height=47, width=70, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)), on_click=lambda _: file_picker.pick_files(allow_multiple=False, allowed_extensions=["png", "jpg", "jpeg"]))], alignment=ft.MainAxisAlignment.CENTER)
+        upload_pic = ft.Row([ft.TextField("placeholder.jpg", label="Select Thumbnail", disabled=True), ft.ElevatedButton("Select", height=47, width=70, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)), on_click=lambda _: file_picker.pick_files(allow_multiple=False, allowed_extensions=["png", "jpg", "jpeg"]))], alignment=ft.MainAxisAlignment.CENTER)
 
         options = []
         for num in range(1, 10):
