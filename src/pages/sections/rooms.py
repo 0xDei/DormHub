@@ -63,6 +63,7 @@ class Rooms(Section):
 
     async def show_add_room(self, e):
         async def on_result(e):
+            if e.files == None: return
             upload_pic.controls[0].value = e.files[0].path
             self.admin_page.page.update()
 
@@ -125,15 +126,22 @@ class Rooms(Section):
             self.admin_page.page.update()
             return
 
-        selected_file = file_picker.result.files[0]
-        source_path = selected_file.path
+        
+        if file_picker.result != None and file_picker.result.files != None:
+            selected_file = file_picker.result.files[0]
+            file_name = selected_file.name
+            source_path = selected_file.path
+        else:
+            file_name = "placeholder.jpg"
+            source_path = "assets/placeholder.jpg"
+
         destination_folder = "assets/room_thumbnails"
         os.makedirs(destination_folder, exist_ok=True)
 
-        destination_path = os.path.join(destination_folder, selected_file.name)
+        destination_path = os.path.join(destination_folder, file_name)
         shutil.copy2(source_path, destination_path)
 
-        await self.admin_page.page.data.create_room(int(bed_count.value), int(monthly_rent.value), status.value, selected_file.name)
+        await self.admin_page.page.data.create_room(int(bed_count.value), int(monthly_rent.value), status.value, file_name)
         self.admin_page.page.close(popup)
         create_banner(self.admin_page.page, ft.Colors.GREEN_100,ft.Icon(ft.Icons.ADD_HOME_ROUNDED, color=ft.Colors.GREEN), f"Successfully created a Room!", ft.Colors.GREEN_500)
         self.admin_page.page.update()
