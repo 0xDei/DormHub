@@ -65,6 +65,7 @@ class Database:
                 bed_count INT DEFAULT 0,
                 monthly_rent INT,
                 current_status TEXT,
+                thumbnail TEXT,
                 PRIMARY KEY(id)
             )
             """
