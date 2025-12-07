@@ -71,7 +71,7 @@ class PageHandler:
                 resident_card
             ],
             alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20
+            spacing=50
         )
 
         if self.page.data.connected == False: await self.page.data.connect(self.page)

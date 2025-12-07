@@ -25,7 +25,7 @@ class Overview(Section):
 
         header = ft.Row(
             [
-                ft.Text("Welcome Back, Admin", color="#FF6900", size=16, weight=ft.FontWeight.W_500),
+                ft.Text("Welcome Back, Admin", color="#FF6900", size=20, weight=ft.FontWeight.W_500),
                 ft.Icon(ft.Icons.WAVING_HAND_ROUNDED, size=24, color=ft.Colors.YELLOW)
             ],
             spacing=3.5

@@ -26,18 +26,29 @@ class Payment(Section):
         )
 
         if self.resident_page.data["room_id"] != "N/A":
-            unpaid_count = len(self.resident_page.data["unpaid_dues"])
-            if unpaid_count == 0: time = int(self.resident_page.data["due_date"])
-            else: time = int(self.resident_page.data["unpaid_dues"][0]["date"])
+            unpaid_count = len(self.resident_page.data.get("unpaid_dues", []))
             
-            date = datetime.fromtimestamp(time)
-            due_date = f"{date.strftime('%b')} {date.day}, {date.year}"
+            # Handle due date safely
+            try:
+                if unpaid_count == 0:
+                    if self.resident_page.data["due_date"] != "N/A":
+                        time = int(self.resident_page.data["due_date"])
+                    else:
+                        time = int(datetime.now().timestamp()) + 2629743  # 1 month from now
+                else:
+                    time = int(self.resident_page.data["unpaid_dues"][0]["date"])
+                
+                date = datetime.fromtimestamp(time)
+                due_date = f"{date.strftime('%b')} {date.day}, {date.year}"
+            except:
+                due_date = "Not Set"
+                time = int(datetime.now().timestamp()) + 2629743
             
             card_title = ft.Text("Upcoming Payment", size=14, color="#feae33", weight=ft.FontWeight.BOLD)
             bgcolor = "#fff5e6"
             border_color = "#fec266"
             due_info = [
-                ft.Text(f"₱ {self.resident_page.data['monthly_rent']:,}", size=18, weight=ft.FontWeight.W_700),
+                ft.Text(f"₱ {self.resident_page.data.get('monthly_rent', 0):,}", size=18, weight=ft.FontWeight.W_700),
                 ft.Text(due_date, size=12, color=ft.Colors.GREY_600)
             ]
 
@@ -46,19 +57,19 @@ class Payment(Section):
             if unpaid_count >= 1:
                 card_title = ft.Text("Unpaid Due!", size=14, color="#ff3333", weight=ft.FontWeight.BOLD)
                 status_icon = ft.Icon(ft.Icons.ERROR_ROUNDED, size=32, color="#ff3333")
-                satus_bgcolor = "#150ffe6e6"
-                bgcolor = "#150ffe6e6"
+                status_bgcolor = "#ffe6e6"
+                bgcolor = "#ffe6e6"
                 border_color = "#ff6666"
             elif (current_time + 2629743) < time:
                 card_title = ft.Text("You're all paid!", size=24, color="#038f00", weight=ft.FontWeight.BOLD)
                 status_icon = ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, size=32, color="#038f00")
-                satus_bgcolor = "#150e6f7e6"
-                bgcolor = "#150e6f7e6"
-                border_color = "#8068d166"
+                status_bgcolor = "#e6f7e6"
+                bgcolor = "#e6f7e6"
+                border_color = "#66d166"
                 due_info = [ft.Container()]
             else:
                 status_icon = ft.Icon(ft.Icons.ACCESS_TIME_FILLED_ROUNDED, size=32, color="#feae33")
-                satus_bgcolor = "#fff5e6"
+                status_bgcolor = "#fff5e6"
 
             next_due_card = ft.Container(
                 ft.Row(
@@ -74,7 +85,7 @@ class Payment(Section):
                         ),
                         ft.Container(
                             status_icon,
-                            bgcolor=satus_bgcolor,
+                            bgcolor=status_bgcolor,
                             border=ft.border.all(1.8, border_color),
                             border_radius=7, 
                             width=32 * 1.5,
@@ -90,8 +101,16 @@ class Payment(Section):
                 expand=True
             )
 
-            next_due_date = datetime.fromtimestamp(int(self.resident_page.data["due_date"]))
-            next_due_date_formatted = f"{next_due_date.strftime('%b')} {next_due_date.day}, {next_due_date.year}"
+            # Handle next due date safely
+            try:
+                if self.resident_page.data["due_date"] != "N/A":
+                    next_due_date = datetime.fromtimestamp(int(self.resident_page.data["due_date"]))
+                    next_due_date_formatted = f"{next_due_date.strftime('%b')} {next_due_date.day}, {next_due_date.year}"
+                else:
+                    next_due_date_formatted = "Not Set"
+            except:
+                next_due_date_formatted = "Not Set"
+
             info_cards = ft.Row(
                 [
                     create_info_card(
@@ -99,7 +118,7 @@ class Payment(Section):
                         [
                             ft.Row([
                                 ft.Text(str(unpaid_count), text_align=ft.TextAlign.CENTER, size=16),
-                                ft.Text(f"x {self.resident_page.data['monthly_rent']:,}", size=12, color=ft.Colors.GREY_400)
+                                ft.Text(f"x {self.resident_page.data.get('monthly_rent', 0):,}", size=12, color=ft.Colors.GREY_400)
                             ], spacing=3.5)
                         ],
                         ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="#ff3333", size=28),
@@ -126,8 +145,10 @@ class Payment(Section):
             )
 
             ph_contents = []
-            for ph_info in self.resident_page.data["payment_history"][::-1]:
-                if ph_info["remark"] == "late":
+            payment_history = self.resident_page.data.get("payment_history", [])
+            
+            for ph_info in payment_history[::-1]:
+                if ph_info.get("remark") == "late":
                     leading_icon = ft.Container(
                         ft.Icon(ft.Icons.TIMER_OUTLINED, color="#DB805C", size=24),
                         bgcolor="#FFEDD4",
@@ -146,29 +167,47 @@ class Payment(Section):
                     )
                     remark = create_remark("on time", color="#00cc0a", bgcolor="#b3ffb6")
 
-                date = datetime.fromtimestamp(ph_info["date"])
+                try:
+                    date = datetime.fromtimestamp(ph_info.get("date", int(datetime.now().timestamp())))
+                    ph_contents.append(
+                        ft.Container(
+                            ft.Row(
+                                [
+                                    ft.Container(leading_icon),
+                                    ft.Column(
+                                        [
+                                            ft.Text(f"{date.strftime('%b')} {date.year}", size=14, weight=ft.FontWeight.W_500),
+                                            ft.Text(date.strftime("%m/%d/%Y"), size=10, color=ft.Colors.GREY_500)
+                                        ], spacing=0, expand=True
+                                    ),
+                                    remark,
+                                    ft.Text(f"₱ {ph_info.get('amount', 0):,}", size=12, weight=ft.FontWeight.W_900)
+                                ]
+                            ),
+                            padding=10,
+                            border=ft.border.all(1.5, "#FEF3C6"),
+                            border_radius=10
+                        )
+                    )
+                except:
+                    pass
+
+            if len(ph_contents) == 0: 
                 ph_contents.append(
                     ft.Container(
-                        ft.Row(
+                        ft.Column(
                             [
-                                ft.Container(leading_icon),
-                                ft.Column(
-                                    [
-                                        ft.Text(f"{date.strftime('%b')} {date.year}", size=14, weight=ft.FontWeight.W_500),
-                                        ft.Text(date.strftime("%m/%d/%Y"), size=10, color=ft.Colors.GREY_500)
-                                    ], spacing=0, expand=True
-                                ),
-                                remark,
-                                ft.Text(f"₱ {ph_info['amount']:,}", size=12, weight=ft.FontWeight.W_900)
-                            ]
+                                ft.Icon(ft.Icons.RECEIPT_LONG_OUTLINED, size=64, color=ft.Colors.GREY_300),
+                                ft.Text("No payment history", size=16, color=ft.Colors.GREY_400, weight=ft.FontWeight.W_500)
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10
                         ),
-                        padding=10,
-                        border=ft.border.all(1.5, "#FEF3C6"),
-                        border_radius=10
+                        expand=True, 
+                        alignment=ft.alignment.center, 
+                        margin=ft.margin.only(top=50)
                     )
                 )
-
-            if len(ph_contents) == 0: ph_contents.append(ft.Container(ft.Text("You have no payment history", color=ft.Colors.GREY_300), expand=True, alignment=ft.alignment.center, margin=ft.margin.only(top=50)))
 
             history = ft.Container(
                 ft.Column(
@@ -186,7 +225,9 @@ class Payment(Section):
             )
 
             up_contents = []
-            for up_info in self.resident_page.data["unpaid_dues"][::-1]:
+            unpaid_dues = self.resident_page.data.get("unpaid_dues", [])
+            
+            for up_info in unpaid_dues[::-1]:
                 leading_icon = ft.Container(
                     ft.Icon(ft.Icons.MONEY_OFF_CSRED_ROUNDED, color="#b32424", size=24),
                     bgcolor="#ffc2c2",
@@ -195,28 +236,46 @@ class Payment(Section):
                     height=24 * 1.5
                 )
 
-                date = datetime.fromtimestamp(up_info["date"])
+                try:
+                    date = datetime.fromtimestamp(up_info.get("date", int(datetime.now().timestamp())))
+                    up_contents.append(
+                        ft.Container(
+                            ft.Row(
+                                [
+                                    ft.Container(leading_icon),
+                                    ft.Column(
+                                        [
+                                            ft.Text(f"{date.strftime('%b')} {date.year}", size=14, weight=ft.FontWeight.W_500),
+                                            ft.Text(date.strftime("%m/%d/%Y"), size=10, color=ft.Colors.GREY_500)
+                                        ], spacing=0, expand=True
+                                    ),
+                                    ft.Text(f"₱ {up_info.get('amount', 0):,}", size=12, weight=ft.FontWeight.W_900)
+                                ]
+                            ),
+                            padding=10,
+                            border=ft.border.all(1.5, "#cc2929"),
+                            border_radius=10
+                        )
+                    )
+                except:
+                    pass
+
+            if len(up_contents) == 0: 
                 up_contents.append(
                     ft.Container(
-                        ft.Row(
+                        ft.Column(
                             [
-                                ft.Container(leading_icon),
-                                ft.Column(
-                                    [
-                                        ft.Text(f"{date.strftime('%b')} {date.year}", size=14, weight=ft.FontWeight.W_500),
-                                        ft.Text(date.strftime("%m/%d/%Y"), size=10, color=ft.Colors.GREY_500)
-                                    ], spacing=0, expand=True
-                                ),
-                                ft.Text(f"₱ {up_info['amount']:,}", size=12, weight=ft.FontWeight.W_900)
-                            ]
+                                ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE_ROUNDED, size=64, color=ft.Colors.GREEN_300),
+                                ft.Text("No unpaid payments", size=16, color=ft.Colors.GREEN_400, weight=ft.FontWeight.W_500)
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10
                         ),
-                        padding=10,
-                        border=ft.border.all(1.5, "#40cc2929"),
-                        border_radius=10
+                        expand=True, 
+                        alignment=ft.alignment.center, 
+                        margin=ft.margin.only(top=50)
                     )
                 )
-
-            if len(up_contents) == 0: up_contents.append(ft.Container(ft.Text("You have no unpaid payments", color=ft.Colors.GREY_300), expand=True, alignment=ft.alignment.center, margin=ft.margin.only(top=50)))
 
             unpaid = ft.Container(
                 ft.Column(
@@ -233,7 +292,19 @@ class Payment(Section):
                 border=ft.border.all(2, "#FEF3C6")
             )
         else:
-            next_due_card = ft.Container(ft.Text("You currently don't have a room", color=ft.Colors.BLACK), expand=True, alignment=ft.alignment.center)
+            next_due_card = ft.Container(
+                ft.Column(
+                    [
+                        ft.Icon(ft.Icons.HOME_OUTLINED, size=64, color=ft.Colors.GREY_300),
+                        ft.Text("No Room Assigned", size=18, color=ft.Colors.GREY_400, weight=ft.FontWeight.W_500),
+                        ft.Text("Contact admin to get assigned to a room", size=12, color=ft.Colors.GREY_300)
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=10
+                ),
+                expand=True, 
+                alignment=ft.alignment.center
+            )
             info_cards = ft.Container()
             history = ft.Container()
             unpaid = ft.Container()

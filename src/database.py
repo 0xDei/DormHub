@@ -126,6 +126,14 @@ class Database:
                     (room_id, json.dumps(issue), "pending", urgency, user_id, int(datetime.now().timestamp()), int(datetime.now().timestamp()))
                 )
 
+    async def update_request_status(self, request_id, status):
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "UPDATE requests SET current_status=%s, date_updated=%s WHERE id=%s",
+                    (status, int(datetime.now().timestamp()), request_id)
+                )
+
     async def create_room(self, bed_count, monthly_rent, current_status, thumbnail):
         async with self.pool.acquire() as conn:
             

@@ -4,7 +4,7 @@ from pages.components.navbar_button import NavBarButton
 active_banner = None
 
 # this might be unecessary and makes things more complicated
-def get_icon(icon_size=24, isColumn=True, radius=10, pad=8, text1_size=12, text2_size=9, marg=ft.margin.only(0, 0, 0, 0)):
+def get_icon(icon_size=64, isColumn=True, radius=16, pad=16, text1_size=20, text2_size=20, marg=ft.margin.only(0, 0, 0, 0)):
     icon = ft.Container(
         ft.Image(
             src=f"../assets/icon{icon_size}.png",
