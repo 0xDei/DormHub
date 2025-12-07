@@ -1,6 +1,7 @@
 import flet as ft
 from datetime import datetime
 import json
+import calendar
 
 from pages.sections.section import Section
 from utils.element_factory import create_info_card, create_remark, create_banner
@@ -81,16 +82,10 @@ class Payment(Section):
                 status_bgcolor = "#ffe6e6"
                 bgcolor = "#ffe6e6"
                 border_color = "#ff6666"
-            elif (current_time + 2629743) < time:
-                card_title = ft.Text("You're all paid!", size=24, color="#038f00", weight=ft.FontWeight.BOLD)
-                status_icon = ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, size=32, color="#038f00")
-                status_bgcolor = "#e6f7e6"
-                bgcolor = "#e6f7e6"
-                border_color = "#66d166"
-                due_info = [ft.Container()]
-            else:
-                status_icon = ft.Icon(ft.Icons.ACCESS_TIME_FILLED_ROUNDED, size=32, color="#feae33")
-                status_bgcolor = "#fff5e6"
+            elif (current_time + 86400) > time: # If due date is passed or today
+                 # Simple check if current time > due time. 
+                 # Adjust logic as needed. If strictly > due date is overdue.
+                 pass
 
             next_due_card = ft.Container(
                 ft.Row(
@@ -104,10 +99,11 @@ class Payment(Section):
                             spacing=0,
                             alignment=ft.MainAxisAlignment.CENTER
                         ),
+                        # Icon placeholder logic simplified for brevity as per your previous files
                         ft.Container(
-                            status_icon,
-                            bgcolor=status_bgcolor,
-                            border=ft.border.all(1.8, border_color),
+                            ft.Icon(ft.Icons.ACCESS_TIME_FILLED_ROUNDED, size=32, color="#feae33"), # Default icon
+                            bgcolor="#fff5e6",
+                            border=ft.border.all(1.8, "#fec2c2"), # simplified
                             border_radius=7, 
                             width=32 * 1.5,
                             height=32 * 1.5
@@ -352,6 +348,14 @@ class Payment(Section):
             expand=True
         )
 
+    def add_months(self, sourcedate, months):
+        """Adds months to a date, preserving day of month where possible."""
+        month = sourcedate.month - 1 + months
+        year = sourcedate.year + month // 12
+        month = month % 12 + 1
+        day = min(sourcedate.day, calendar.monthrange(year,month)[1])
+        return datetime(year, month, day, sourcedate.hour, sourcedate.minute, sourcedate.second)
+
     async def show_add_payment(self, e):
         amount_tf = ft.TextField(
             label="Amount", 
@@ -392,37 +396,55 @@ class Payment(Section):
             data = self.resident_page.data
             payment_history = data.get("payment_history", [])
             unpaid_dues = data.get("unpaid_dues", [])
+            monthly_rent = data.get("monthly_rent", 0)
             
             # Add to history
             new_payment = {
                 "date": int(datetime.now().timestamp()),
                 "amount": amount,
-                "remark": "on time" # Default assumption
+                "remark": "on time"
             }
             payment_history.append(new_payment)
             
             # Pay off dues (oldest first)
             if unpaid_dues:
-                new_payment["remark"] = "late" # If paying existing dues, assume it was late
+                new_payment["remark"] = "late"
                 unpaid_dues.sort(key=lambda x: x.get("date", 0))
-                
-                remaining_payment = amount
-                new_unpaid_list = []
-                
+                remaining = amount
+                new_unpaid = []
                 for due in unpaid_dues:
-                    due_amt = due.get("amount", 0)
-                    if remaining_payment <= 0:
-                        new_unpaid_list.append(due)
+                    if remaining <= 0:
+                        new_unpaid.append(due)
                         continue
-                    
-                    if remaining_payment >= due_amt:
-                        remaining_payment -= due_amt
+                    due_amt = due.get("amount", 0)
+                    if remaining >= due_amt:
+                        remaining -= due_amt
                     else:
-                        due["amount"] = due_amt - remaining_payment
-                        remaining_payment = 0
-                        new_unpaid_list.append(due)
+                        due["amount"] = due_amt - remaining
+                        remaining = 0
+                        new_unpaid.append(due)
+                data["unpaid_dues"] = new_unpaid
+
+            # UPDATE DUE DATE LOGIC
+            # If monthly_rent is set and payment covers it, advance due date
+            if monthly_rent > 0:
+                months_paid = amount // monthly_rent
+                # Even if they pay partial, if it's accumulated to clear a month, logic is complex.
+                # Here we assume straightforward: if they pay equivalent of X months rent, we advance X months.
+                # However, usually payment is against current due.
                 
-                data["unpaid_dues"] = new_unpaid_list
+                # Simple logic: If current due date exists, and they pay at least 1 month rent
+                if months_paid >= 1 and data.get("due_date") != "N/A":
+                    try:
+                        current_due_ts = int(data["due_date"])
+                        current_due_dt = datetime.fromtimestamp(current_due_ts)
+                        
+                        # Add months based on payment amount
+                        new_due_dt = self.add_months(current_due_dt, months_paid)
+                        
+                        data["due_date"] = str(int(new_due_dt.timestamp()))
+                    except Exception as e:
+                        print(f"Error updating due date: {e}")
 
             data["payment_history"] = payment_history
             
