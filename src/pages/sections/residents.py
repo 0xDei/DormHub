@@ -1,6 +1,8 @@
 import flet as ft
 import json
+import calendar
 from datetime import datetime
+import math
 
 from pages.sections.section import Section
 from utils.element_factory import create_info_card, create_remark, create_banner
@@ -170,6 +172,14 @@ class Residents(Section):
     def show_add_resident(self, e):
         self.page.run_task(self.show_add_dialog)
 
+    # Helper for accurate date calculation
+    def add_months(self, sourcedate, months):
+        month = sourcedate.month - 1 + months
+        year = sourcedate.year + month // 12
+        month = month % 12 + 1
+        day = min(sourcedate.day, calendar.monthrange(year,month)[1])
+        return datetime(year, month, day, sourcedate.hour, sourcedate.minute, sourcedate.second)
+
     async def load_data(self):
         try:
             users = await self.page.data.get_all_users()
@@ -184,11 +194,13 @@ class Residents(Section):
                     "password": user[3],
                     "room_id": data.get("room_id", "N/A"),
                     "phone": data.get("phone_number", "N/A"),
+                    "due_date": data.get("due_date", "N/A"),
                     "data": data
                 })
 
             await self.update_stats()
-            await self.display_residents(self.all_residents)
+            # Initial sort and display
+            await self.filter_residents()
         except Exception as e:
             print(f"Error: {e}")
 
@@ -214,6 +226,7 @@ class Residents(Section):
             )
         else:
             for r in residents:
+                # Room Badge
                 badge = create_remark(
                     f"Room {r['room_id']}" if r['room_id'] != "N/A" else "Unassigned",
                     "#00cc0a" if r['room_id'] != "N/A" else "#808899",
@@ -296,6 +309,34 @@ class Residents(Section):
         password_f = ft.TextField(label="Password", border_radius=10, password=True, can_reveal_password=True)
         phone_f = ft.TextField(label="Phone", border_radius=10)
 
+        # Date Picker for Move-in Date
+        selected_date = [None]
+        
+        def on_date_change(e):
+            if date_picker.value:
+                selected_date[0] = date_picker.value
+                date_button.text = date_picker.value.strftime("%b %d, %Y")
+                date_button.update()
+
+        date_picker = ft.DatePicker(
+            on_change=on_date_change,
+        )
+        
+        # Use page.open() to prevent "has no attribute 'pick_date'" error
+        date_button = ft.ElevatedButton(
+            "Select Move-in Date",
+            icon=ft.Icons.CALENDAR_MONTH,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color=ft.Colors.BLACK,
+                bgcolor="#F3F3F5",
+                elevation=0
+            ),
+            width=290,
+            height=45,
+            on_click=lambda _: self.page.open(date_picker)
+        )
+
         async def add_action(e):
             try:
                 if not username_f.value or not email_f.value or not password_f.value:
@@ -304,15 +345,25 @@ class Residents(Section):
                 await self.page.data.create_user(
                     username_f.value.strip(),
                     email_f.value.strip(),
-                    password_f.value
+                    password_f.value,
+                    phone_f.value.strip() if phone_f.value else "N/A"
                 )
 
-                if phone_f.value:
-                    user = await self.page.data.get_user_by_email(email_f.value.strip())
-                    if user:
-                        data = json.loads(user[0][4])
-                        data["phone_number"] = phone_f.value.strip()
-                        await self.page.data.update_user(user[0][0], user[0][1], user[0][2], user[0][3], data)
+                # Update phone and dates if provided
+                user = await self.page.data.get_user_by_email(email_f.value.strip())
+                if user:
+                    data = json.loads(user[0][4])
+                    
+                    if selected_date[0]:
+                        move_in_dt = selected_date[0]
+                        ts = int(move_in_dt.timestamp())
+                        data["move_in_date"] = str(ts)
+                        
+                        # Calculate exact one month later for first payment
+                        new_due_dt = self.add_months(move_in_dt, 1)
+                        data["due_date"] = str(int(new_due_dt.timestamp()))
+
+                    await self.page.data.update_user(user[0][0], user[0][1], user[0][2], user[0][3], data)
 
                 self.page.close(dlg)
                 create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN), "Resident added!", ft.Colors.GREEN)
@@ -322,7 +373,18 @@ class Residents(Section):
 
         dlg = ft.AlertDialog(
             title=ft.Text("Add Resident"),
-            content=ft.Column([username_f, email_f, password_f, phone_f], tight=True, spacing=10),
+            content=ft.Column(
+                [
+                    username_f, 
+                    email_f, 
+                    password_f, 
+                    phone_f,
+                    ft.Text("Move-in Date", size=12, color=ft.Colors.GREY_600),
+                    date_button
+                ], 
+                tight=True, 
+                spacing=10
+            ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self.page.close(dlg)),
                 ft.FilledButton("Add", bgcolor="#FF6900", on_click=lambda e: self.page.run_task(add_action, e))
@@ -347,11 +409,58 @@ class Residents(Section):
             border_radius=10
         )
 
+        # Date Picker for Move-in Date
+        current_ts = resident['data'].get("move_in_date", "N/A")
+        initial_date = None
+        button_text = "Select Move-in Date"
+        selected_date = [None]
+
+        if current_ts != "N/A":
+            try:
+                initial_date = datetime.fromtimestamp(int(current_ts))
+                button_text = initial_date.strftime("%b %d, %Y")
+                selected_date[0] = initial_date
+            except:
+                pass
+
+        def on_date_change(e):
+            if date_picker.value:
+                selected_date[0] = date_picker.value
+                date_button.text = date_picker.value.strftime("%b %d, %Y")
+                date_button.update()
+
+        date_picker = ft.DatePicker(
+            value=initial_date,
+            on_change=on_date_change,
+        )
+
+        date_button = ft.ElevatedButton(
+            button_text,
+            icon=ft.Icons.CALENDAR_MONTH,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color=ft.Colors.BLACK,
+                bgcolor="#F3F3F5",
+                elevation=0
+            ),
+            width=290,
+            height=45,
+            on_click=lambda _: self.page.open(date_picker)
+        )
+
         async def update_action(e):
             try:
                 data = resident['data'].copy()
                 data['phone_number'] = phone_f.value.strip() if phone_f.value else "N/A"
                 data['room_id'] = room_dd.value if room_dd.value != "N/A" else "N/A"
+                
+                if selected_date[0]:
+                    move_in_dt = selected_date[0]
+                    ts = int(move_in_dt.timestamp())
+                    data['move_in_date'] = str(ts)
+                    # Set Next Due Date to 1 month after move-in
+                    new_due_dt = self.add_months(move_in_dt, 1)
+                    data['due_date'] = str(int(new_due_dt.timestamp()))
 
                 await self.page.data.update_user(
                     resident['id'],
@@ -369,7 +478,18 @@ class Residents(Section):
 
         dlg = ft.AlertDialog(
             title=ft.Text("Edit Resident"),
-            content=ft.Column([username_f, email_f, phone_f, room_dd], tight=True, spacing=10),
+            content=ft.Column(
+                [
+                    username_f, 
+                    email_f, 
+                    phone_f, 
+                    room_dd,
+                    ft.Text("Move-in Date", size=12, color=ft.Colors.GREY_600),
+                    date_button
+                ], 
+                tight=True, 
+                spacing=10
+            ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self.page.close(dlg)),
                 ft.FilledButton("Update", bgcolor="#FF6900", on_click=lambda e: self.page.run_task(update_action, e))
