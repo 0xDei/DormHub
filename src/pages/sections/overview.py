@@ -37,7 +37,8 @@ class Overview(Section):
             requests_count += 1
             if request_info[3] == "high": urgent_count += 1
 
-        percent = (residents_count / bed_count) * 100
+        bed_count_safe = max(bed_count, 1)
+        percent = (residents_count / bed_count_safe) * 100
 
         info_cards = ft.Row(
                 [
@@ -100,8 +101,7 @@ class Overview(Section):
             )
 
         occupied = residents_count
-        bed_count_safe = max(bed_count, 1)
-        available = max(bed_count_safe - occupied, 0)
+        available = max(bed_count - occupied, 0)
 
         max_occ = max(occupied, bed_count_safe, 1)
         step = max(1, max_occ // 4)
