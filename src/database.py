@@ -33,7 +33,7 @@ class Database:
 
         create_banner(page, ft.Colors.AMBER_100, ft.Image(src="assets/db-connect.png", color=ft.Colors.AMBER_900), "Attempting to connect to database...", ft.Colors.BLUE)
         try:
-            self.pool = await aiomysql.create_pool(host="localhost", user="root", password="djpim!", db="dormhub_app", autocommit=True)
+            self.pool = await aiomysql.create_pool(host="localhost", user="root", password="", db="DORMHUBAPP", autocommit=True)
             create_banner(page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINED, color=ft.Colors.GREEN), "You are now connected!", ft.Colors.GREEN_500)
             self.connected = True
             await self.create_tables()
