@@ -40,7 +40,12 @@ class AdminPage:
         self.view = ft.View(
             "/active-admin",
             [
-                ft.Row([self.navbar], spacing=0, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+                ft.Row(
+                    [self.navbar], 
+                    spacing=0, 
+                    vertical_alignment=ft.CrossAxisAlignment.STRETCH, # Stretch sidebar to bottom
+                    expand=True
+                )
             ],
             bgcolor="#FFFBEB",
             padding=ft.padding.only(top=-4)

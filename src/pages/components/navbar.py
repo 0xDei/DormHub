@@ -10,7 +10,8 @@ class NavBar(ft.Container):
         self.buttons = buttons
 
         self.width = 200
-        self.height = 685
+        # Removed fixed height to allow stretching
+        # self.height = 685 
         self.padding = ft.padding.only(top=18, left=13, right=13, bottom=18)
         self.bgcolor = ft.Colors.WHITE
 
@@ -43,7 +44,8 @@ class NavBar(ft.Container):
                 ft.Container(expand=True),
                 ft.Divider(2),
                 ft.Container(margin=ft.margin.only(top=10), content=ft.FilledButton("Logout", on_click=self.logout, icon=ft.Icons.EXIT_TO_APP_ROUNDED, icon_color=ft.Colors.RED, bgcolor="#FEF9F9", color=ft.Colors.RED, elevation=0, width=180, height=30, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=7), text_style=ft.TextStyle(size=12, weight=ft.FontWeight.W_700), alignment=ft.alignment.center_left, padding=10)))
-            ]
+            ],
+            expand=True # Allow the column to fill the container height
         )
 
 
@@ -54,7 +56,7 @@ class NavBar(ft.Container):
 
         popup = ft.AlertDialog(
             modal=True,
-            title="Logout",
+            title=ft.Text("Logout"),
             content=ft.Text("Are you sure you want to log out?", color=ft.Colors.GREY_700),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self.current_page.page.close(popup)),

@@ -204,7 +204,7 @@ class ResidentPage:
                 ft.Row(
                     [self.navbar], 
                     spacing=0, 
-                    vertical_alignment=ft.CrossAxisAlignment.START, 
+                    vertical_alignment=ft.CrossAxisAlignment.STRETCH, # Stretch sidebar to bottom
                     expand=True
                 )
             ],

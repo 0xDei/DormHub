@@ -94,7 +94,7 @@ class Database:
                 await cur.execute(query, params)
                 return await cur.fetchall()
 
-    async def create_user(self, username, email, password):
+    async def create_user(self, username, email, password, phone_number="N/A"):
         async with self.pool.acquire() as conn:
 
             data = {
@@ -103,7 +103,7 @@ class Database:
                 "due_date": "N/A",
                 "payment_history": [],
                 "unpaid_dues": [],
-                "phone_number": "N/A"
+                "phone_number": phone_number
             }
 
             async with conn.cursor() as cur:

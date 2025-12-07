@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 
 from pages.sections.section import Section
-from utils.element_factory import create_info_card, create_remark
+from utils.element_factory import create_info_card, create_remark, create_banner
 
 class Payment(Section):
     def __init__(self, resident_page):
@@ -11,7 +11,7 @@ class Payment(Section):
 
         self.resident_page = resident_page
 
-        header = ft.Column(
+        header_content = ft.Column(
             [
                 ft.Row(
                     [
@@ -22,8 +22,29 @@ class Payment(Section):
                 ),
                 ft.Text("Manage your rent payments and view history", size=12, weight=ft.FontWeight.W_500)
             ],
-            spacing=1
+            spacing=1,
+            expand=True
         )
+
+        add_button = ft.Container(
+            ft.FilledButton(
+                "Add Payment",
+                icon=ft.Icons.ADD,
+                icon_color=ft.Colors.WHITE,
+                bgcolor="#FE9A00",
+                color=ft.Colors.WHITE,
+                elevation=0,
+                width=140,
+                height=30,
+                style=ft.ButtonStyle(
+                    shape=ft.RoundedRectangleBorder(radius=7),
+                    text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD)
+                ),
+                on_click=self.show_add_payment
+            )
+        )
+
+        header = ft.Row([header_content, add_button])
 
         if self.resident_page.data["room_id"] != "N/A":
             unpaid_count = len(self.resident_page.data.get("unpaid_dues", []))
@@ -330,3 +351,95 @@ class Payment(Section):
             ),
             expand=True
         )
+
+    async def show_add_payment(self, e):
+        amount_tf = ft.TextField(
+            label="Amount", 
+            hint_text="Enter payment amount", 
+            prefix_text="₱ ",
+            border_radius=10, 
+            keyboard_type=ft.KeyboardType.NUMBER,
+            input_filter=ft.InputFilter(regex_string=r'^[0-9]*$', allow=True, replacement_string="")
+        )
+
+        popup = ft.AlertDialog(
+            title=ft.Text("Add Payment"),
+            content=ft.Container(
+                ft.Column([amount_tf], tight=True),
+                width=300
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda e: self.resident_page.page.close(popup)),
+                ft.FilledButton("Pay", bgcolor="#FF6900", on_click=lambda e: self.resident_page.page.run_task(self.check_add_payment, amount_tf, popup))
+            ]
+        )
+        self.resident_page.page.open(popup)
+
+    async def check_add_payment(self, amount_tf, popup):
+        if not amount_tf.value:
+            amount_tf.error_text = "Please enter an amount"
+            amount_tf.update()
+            return
+        
+        try:
+            amount = int(amount_tf.value)
+            if amount <= 0:
+                amount_tf.error_text = "Amount must be greater than 0"
+                amount_tf.update()
+                return
+            
+            # Fetch fresh data
+            data = self.resident_page.data
+            payment_history = data.get("payment_history", [])
+            unpaid_dues = data.get("unpaid_dues", [])
+            
+            # Add to history
+            new_payment = {
+                "date": int(datetime.now().timestamp()),
+                "amount": amount,
+                "remark": "on time" # Default assumption
+            }
+            payment_history.append(new_payment)
+            
+            # Pay off dues (oldest first)
+            if unpaid_dues:
+                new_payment["remark"] = "late" # If paying existing dues, assume it was late
+                unpaid_dues.sort(key=lambda x: x.get("date", 0))
+                
+                remaining_payment = amount
+                new_unpaid_list = []
+                
+                for due in unpaid_dues:
+                    due_amt = due.get("amount", 0)
+                    if remaining_payment <= 0:
+                        new_unpaid_list.append(due)
+                        continue
+                    
+                    if remaining_payment >= due_amt:
+                        remaining_payment -= due_amt
+                    else:
+                        due["amount"] = due_amt - remaining_payment
+                        remaining_payment = 0
+                        new_unpaid_list.append(due)
+                
+                data["unpaid_dues"] = new_unpaid_list
+
+            data["payment_history"] = payment_history
+            
+            # Save to DB
+            await self.resident_page.page.data.update_user(
+                self.resident_page.id, 
+                self.resident_page.username, 
+                self.resident_page.email, 
+                self.resident_page.password, 
+                data
+            )
+            
+            self.resident_page.page.close(popup)
+            create_banner(self.resident_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN), "Payment added successfully!", ft.Colors.GREEN)
+            
+            # Refresh section
+            self.resident_page.page.run_task(self.resident_page.show_section, Payment(self.resident_page))
+
+        except Exception as e:
+            print(f"Error adding payment: {e}")
