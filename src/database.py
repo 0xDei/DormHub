@@ -124,8 +124,19 @@ class Database:
                     "INSERT INTO requests (room_id, issue, current_status, urgency, user_id, date_created, date_updated) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (room_id, json.dumps(issue), "pending", urgency, user_id, int(datetime.now().timestamp()), int(datetime.now().timestamp()))
                 )
-                return await cur.fetchall()
 
+    async def create_room(self, bed_count, monthly_rent, current_status, thumbnail):
+        async with self.pool.acquire() as conn:
+            
+            amenities = []
+            residents = []
+
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "INSERT INTO rooms (amenities, residents, bed_count, monthly_rent, current_status, thumbnail) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (json.dumps(amenities), json.dumps(residents), bed_count, monthly_rent, current_status, thumbnail)
+                )
+            
 
     async def get_all_users(self):
         async with self.pool.acquire() as conn:

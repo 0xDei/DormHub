@@ -285,7 +285,7 @@ class Requests(Section):
             self.resident_page.page.update()
             return
 
-        stmt = await self.resident_page.page.data.create_request(self.resident_page.data["room_id"], title_value, desc_value, urgency.value, self.resident_page.id)
+        await self.resident_page.page.data.create_request(self.resident_page.data["room_id"], title_value, desc_value, urgency.value, self.resident_page.id)
         self.resident_page.page.close(popup)
         create_banner(self.resident_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.ADD, color=ft.Colors.GREEN), f"Successfully created a Request!", ft.Colors.GREEN_500)
         self.resident_page.page.update()
