@@ -11,6 +11,7 @@ from pages.components.navbar_button import NavBarButton
 
 class ResidentPage:
     def __init__(self, page: ft.Page, user_id):
+        super().__init__()
         self.page = page
         self.id = user_id
         self.username = None; self.email = None; self.password = None; self.data = None
@@ -22,23 +23,31 @@ class ResidentPage:
         if not res: return
         self.username = res[0][1]; self.email = res[0][2]; self.password = res[0][3]
         try: self.data = json.loads(res[0][4])
-        except: self.data = {"room_id": "N/A", "move_in_date": "N/A", "due_date": "N/A", "payment_history": [], "unpaid_dues": [], "phone_number": "N/A"}
+        # FIX: Ensure 'roommate_data' is initialized in case of corrupted/new data
+        except: self.data = {"room_id": "N/A", "move_in_date": "N/A", "due_date": "N/A", "payment_history": [], "unpaid_dues": [], "phone_number": "N/A", "linked_admin_id": "N/A", "roommate_data": []}
         
-        for k in ["room_id", "move_in_date", "due_date", "phone_number"]: 
+        for k in ["room_id", "move_in_date", "due_date", "phone_number", "linked_admin_id"]: 
             if k not in self.data: self.data[k] = "N/A"
         for k in ["payment_history", "unpaid_dues"]:
             if k not in self.data: self.data[k] = []
         if "last_checked_announcements" not in self.data:
             self.data["last_checked_announcements"] = 0
+        # FIX: Also ensure roommate_data exists here
+        if "roommate_data" not in self.data:
+            self.data["roommate_data"] = []
 
         # --- Count Unread Announcements ---
         try:
-            posts = await self.page.data.get_announcements()
+            # Pass the linked_admin_id to filter announcements
+            admin_id = self.data.get("linked_admin_id")
+            posts = await self.page.data.get_announcements(admin_user_id=admin_id)
+            
             self.unread_count = 0
             if posts:
                 last_checked = self.data.get("last_checked_announcements", 0)
                 for p in posts:
-                    if int(p[3]) > last_checked:
+                    # Date is now at index 4 (p[4]), not p[3]
+                    if int(p[4]) > last_checked:
                         self.unread_count += 1
         except Exception as e:
             print(f"Error checking unread: {e}")
@@ -53,10 +62,26 @@ class ResidentPage:
                 self.data.update({"monthly_rent": room[0][1], "bed_count": room[0][2], "room_status": room[0][3], "thumbnail": room[0][4]})
                 try:
                     all_users = await self.page.data.get_all_users()
-                    self.data["roommates"] = [u[1] for u in all_users if u[0] != self.id and json.loads(u[4]).get("room_id") == self.data["room_id"]]
-                except: self.data["roommates"] = []
+                    roommates_list = []
+                    roommate_data_list = [] # List to store full user data for MyRoom
+
+                    for u in all_users:
+                        # Skip self
+                        if u[0] == self.id: continue
+                        
+                        u_data = json.loads(u[4])
+                        # Only include users with the same room_id
+                        if str(u_data.get("room_id")) == str(self.data["room_id"]):
+                            roommates_list.append(u[1]) # Username
+                            roommate_data_list.append(u_data) # Full data for phone, etc.
+
+                    self.data["roommates"] = roommates_list
+                    # FIX: Populate the missing roommate_data field
+                    self.data["roommate_data"] = roommate_data_list 
+                except: self.data["roommates"] = []; self.data["roommate_data"] = []
         else:
-            self.data.update({"requests_data": [], "monthly_rent": 0, "thumbnail": "placeholder.jpg", "roommates": []})
+            # FIX: Initialize the missing roommate_data field for unassigned rooms
+            self.data.update({"requests_data": [], "monthly_rent": 0, "thumbnail": "placeholder.jpg", "roommates": [], "roommate_data": []})
 
     async def show(self):
         # Load data first so unread count is accurate

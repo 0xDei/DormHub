@@ -9,6 +9,7 @@ class ResidentAnnouncements(Section):
         super().__init__()
         self.resident_page = resident_page
         self.user_id = resident_page.id
+        self.admin_id = resident_page.data.get("linked_admin_id") # Retrieve the linked Admin ID
         self.reply_parent_id = None
         
         header = ft.Row([
@@ -29,25 +30,41 @@ class ResidentAnnouncements(Section):
 
     async def load_data(self):
         self.posts_list.controls.clear()
-        posts = await self.resident_page.page.data.get_announcements()
+        
+        # MODIFIED: Filter announcements by the Resident's linked Admin ID
+        posts = await self.resident_page.page.data.get_announcements(admin_user_id=self.admin_id)
         
         if not posts:
             self.posts_list.controls.append(ft.Container(ft.Text("No announcements yet.", color="grey"), alignment=ft.alignment.center, padding=50))
         else:
             for p in posts:
-                # p: id, title, content, date, likes
+                # p: id(0), admin_user_id(1), title(2), content(3), date(4), likes(5)
                 pid = p[0]
-                likes = json.loads(p[4])
+                
+                # FIX: Safely parse likes field (p[5]). Handle non-string/corrupt data.
+                likes_raw = p[5]
+                likes = []
+                if isinstance(likes_raw, str):
+                    try:
+                        likes = json.loads(likes_raw)
+                    except json.JSONDecodeError:
+                        likes = []
+                
                 is_liked = self.user_id in likes
-                dt = datetime.fromtimestamp(int(p[3])).strftime("%b %d, %Y")
+                
+                # FIX: Safely parse date (p[4]). If invalid, default to N/A.
+                try:
+                    dt = datetime.fromtimestamp(int(p[4])).strftime("%b %d, %Y")
+                except (ValueError, TypeError):
+                    dt = "N/A"
                 
                 comments = await self.resident_page.page.data.get_comments(pid)
                 comment_count = len(comments)
 
                 card = ft.Container(
                     ft.Column([
-                        ft.Text(p[1], weight="bold", size=16),
-                        ft.Text(p[2], size=13, color="#444444"),
+                        ft.Text(p[2], weight="bold", size=16), # title
+                        ft.Text(p[3], size=13, color="#444444"), # content
                         ft.Container(height=5),
                         ft.Row([
                             ft.Text(dt, size=11, color="grey"),

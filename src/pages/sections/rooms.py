@@ -34,8 +34,15 @@ class Rooms(Section):
         try:
             self.rooms_list.controls.clear()
             
-            # Fetch both Rooms and Users to calculate accurate status
-            rooms_data = await self.admin_page.page.data.get_all_rooms()
+            # --- START MODIFICATION ---
+            # 1. Get the current Admin ID
+            current_admin_id = self.admin_page.page.data.get_active_user()
+
+            # 2. Fetch only Rooms owned by this Admin
+            rooms_data = await self.admin_page.page.data.get_all_rooms(admin_user_id=current_admin_id)
+            # --- END MODIFICATION ---
+
+            # Fetch users to calculate accurate status
             users_data = await self.admin_page.page.data.get_all_users()
             
             # Count residents per room
@@ -64,8 +71,8 @@ class Rooms(Section):
                     # Calculate dynamic status
                     room_id_str = str(r[0])
                     current_residents = room_occupancy.get(room_id_str, 0)
-                    bed_count = r[3]
-                    db_status = r[5]
+                    bed_count = r[4] # Index 4 is bed_count
+                    db_status = r[6] # Index 6 is current_status
                     
                     # Logic: Keep 'maintenance', otherwise calc based on occupancy
                     if db_status == "maintenance":
@@ -78,9 +85,9 @@ class Rooms(Section):
                     room = {
                         'id': r[0], 
                         'bed_count': bed_count, 
-                        'monthly_rent': r[4], 
+                        'monthly_rent': r[5], # Index 5 is monthly_rent
                         'status': status, 
-                        'thumbnail': r[6],
+                        'thumbnail': r[7], # Index 7 is thumbnail
                         'current_residents': current_residents # Store for display
                     }
                     self.rooms_list.controls.append(self.create_room_card(room))
@@ -206,7 +213,10 @@ class Rooms(Section):
             os.makedirs("assets/room_thumbnails", exist_ok=True)
             shutil.copy2(f.path, f"assets/room_thumbnails/{file_name}")
 
-        await self.admin_page.page.data.create_room(int(bed_count.value), int(monthly_rent.value), status.value, file_name)
+        # Get Admin ID for room creation
+        admin_id = self.admin_page.page.data.get_active_user()
+        
+        await self.admin_page.page.data.create_room(int(bed_count.value), int(monthly_rent.value), status.value, file_name, admin_id)
         self.admin_page.page.close(popup)
         create_banner(self.admin_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.ADD_HOME, color="green"), "Room created!", "green")
         await self.load_rooms()

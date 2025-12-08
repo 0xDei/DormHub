@@ -2,6 +2,7 @@ import flet as ft
 import re
 import asyncio
 import math
+import json 
 
 from utils.element_factory import *
 
@@ -10,19 +11,26 @@ class LoginPage:
         self.page = page
         self.type = type  # 0 = Admin, 1 = Resident
 
-        self.admin_email = "admin@gmail.com"
-        self.admin_password = "admin123"
+        # REMOVED: Hardcoded Admin credentials are now checked against DB.
         
         # State for UI controls
         self.card_container = None
         self.login_view = None
         self.register_view = None
         self.is_registering = False
+        
+        # New admin specific views
+        if self.type == 0:
+            self.admin_login_view = None
+            self.admin_register_view = None
+            self.is_registering_admin = False
+
 
     async def show(self):
-        # --- 1. BUILD LOGIN VIEW (Front of Card) ---
+        # --- 1. BUILD ADMIN LOGIN / REGISTER VIEWS ---
         if self.type == 0:
-            login_field = ft.TextField(
+            # 1. Admin Login Form
+            admin_email_tf = ft.TextField(
                 label="Admin Email", 
                 hint_text="Enter admin email", 
                 hint_style=ft.TextStyle(color="#B8B8C1"), 
@@ -32,9 +40,112 @@ class LoginPage:
                 bgcolor="#F3F3F5", 
                 prefix_icon=ft.Icon(ft.Icons.EMAIL_OUTLINED, color="#B8B8C1"), 
                 width=340, 
-                on_submit=lambda e: self.page.run_task(self.check_login, login_field, passwordTF)
+                on_submit=lambda e: self.page.run_task(self.check_admin_login, admin_email_tf, admin_pass_tf)
             )
-        else:
+            admin_pass_tf = ft.TextField(
+                label="Password", 
+                hint_text="Enter your password", 
+                hint_style=ft.TextStyle(color="#B8B8C1"), 
+                text_style=ft.TextStyle(color=ft.Colors.BLACK), 
+                border_radius=10, 
+                border_width=0, 
+                bgcolor="#F3F3F5", 
+                prefix_icon=ft.Icon(ft.Icons.LOCK_OUTLINED, color="#B8B8C1"), 
+                width=340, 
+                password=True, 
+                can_reveal_password=True, 
+                on_submit=lambda e: self.page.run_task(self.check_admin_login, admin_email_tf, admin_pass_tf)
+            )
+
+            self.admin_login_view = ft.Column(
+                [
+                    ft.Text("Admin Login", weight=ft.FontWeight.BOLD, size=24, color=ft.Colors.BLACK),
+                    ft.Container(
+                        ft.Column([admin_email_tf, admin_pass_tf], spacing=25),
+                        margin=ft.margin.only(top=50)
+                    ),
+                    ft.Container(
+                        ft.Column(
+                            [
+                                ft.FilledButton(
+                                    "Log In", 
+                                    width=340, height=45, 
+                                    bgcolor="#FF6900", 
+                                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), 
+                                    color=ft.Colors.WHITE, 
+                                    on_click=lambda e: self.page.run_task(self.check_admin_login, admin_email_tf, admin_pass_tf)
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Text("New Admin?"), 
+                                        ft.GestureDetector(
+                                            content=ft.Text("Register here", color="#7189FF", weight=ft.FontWeight.BOLD), 
+                                            on_tap=lambda e: self.page.run_task(self.flip_admin_card)
+                                        )
+                                    ], 
+                                    spacing=5,
+                                    alignment=ft.MainAxisAlignment.CENTER
+                                )
+                            ],
+                            spacing=15
+                        ),
+                        margin=ft.margin.only(top=40)
+                    )
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
+
+            # 2. Admin Register Form
+            reg_admin_user_tf = ft.TextField(label="Username", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.PERSON, color="#B8B8C1"), width=340)
+            reg_admin_email_tf = ft.TextField(label="Admin Email", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.EMAIL, color="#B8B8C1"), width=340)
+            reg_admin_pass_tf = ft.TextField(label="Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK, color="#B8B8C1"), width=340)
+            reg_admin_confirm_tf = ft.TextField(label="Confirm Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK_CLOCK, color="#B8B8C1"), width=340)
+
+            self.admin_register_view = ft.Column(
+                [
+                    ft.Text("Admin Registration", weight=ft.FontWeight.BOLD, size=24, color=ft.Colors.BLACK),
+                    ft.Container(
+                        ft.Column([reg_admin_user_tf, reg_admin_email_tf, reg_admin_pass_tf, reg_admin_confirm_tf], spacing=15),
+                        margin=ft.margin.only(top=30)
+                    ),
+                    ft.Container(
+                        ft.Column(
+                            [
+                                ft.FilledButton(
+                                    "Register Admin", 
+                                    width=340, height=45, 
+                                    bgcolor="#FF6900", 
+                                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), 
+                                    color=ft.Colors.WHITE, 
+                                    on_click=lambda e: self.page.run_task(self.sign_up_admin, reg_admin_user_tf, reg_admin_email_tf, reg_admin_pass_tf, reg_admin_confirm_tf)
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Text("Already registered?"), 
+                                        ft.GestureDetector(
+                                            content=ft.Text("Log in here", color="#7189FF", weight=ft.FontWeight.BOLD), 
+                                            on_tap=lambda e: self.page.run_task(self.flip_admin_card)
+                                        )
+                                    ], 
+                                    spacing=5,
+                                    alignment=ft.MainAxisAlignment.CENTER
+                                )
+                            ],
+                            spacing=15
+                        ),
+                        margin=ft.margin.only(top=30)
+                    )
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
+
+            # Set initial view for Admin
+            current_view = self.admin_login_view
+
+        # --- 2. BUILD RESIDENT LOGIN / REGISTER VIEWS (Existing Logic) ---
+        else: 
             login_field = ft.TextField(
                 label="Username", 
                 hint_text="Enter your username", 
@@ -48,23 +159,21 @@ class LoginPage:
                 on_submit=lambda e: self.page.run_task(self.check_login, login_field, passwordTF)
             )
 
-        passwordTF = ft.TextField(
-            label="Password", 
-            hint_text="Enter your password", 
-            hint_style=ft.TextStyle(color="#B8B8C1"), 
-            text_style=ft.TextStyle(color=ft.Colors.BLACK), 
-            border_radius=10, 
-            border_width=0, 
-            bgcolor="#F3F3F5", 
-            prefix_icon=ft.Icon(ft.Icons.LOCK_OUTLINED, color="#B8B8C1"), 
-            width=340, 
-            password=True, 
-            can_reveal_password=True, 
-            on_submit=lambda e: self.page.run_task(self.check_login, login_field, passwordTF)
-        )
+            passwordTF = ft.TextField(
+                label="Password", 
+                hint_text="Enter your password", 
+                hint_style=ft.TextStyle(color="#B8B8C1"), 
+                text_style=ft.TextStyle(color=ft.Colors.BLACK), 
+                border_radius=10, 
+                border_width=0, 
+                bgcolor="#F3F3F5", 
+                prefix_icon=ft.Icon(ft.Icons.LOCK_OUTLINED, color="#B8B8C1"), 
+                width=340, 
+                password=True, 
+                can_reveal_password=True, 
+                on_submit=lambda e: self.page.run_task(self.check_login, login_field, passwordTF)
+            )
 
-        login_footer = ft.Row()
-        if self.type == 1:
             login_footer = ft.Row(
                 [
                     ft.Text("New User?"), 
@@ -77,41 +186,38 @@ class LoginPage:
                 alignment=ft.MainAxisAlignment.CENTER
             )
 
-        self.login_view = ft.Column(
-            [
-                ft.Text("Log in as Admin" if self.type == 0 else "Log in as Resident", weight=ft.FontWeight.BOLD, size=24, color=ft.Colors.BLACK),
-                ft.Container(
-                    ft.Column([login_field, passwordTF], spacing=25),
-                    margin=ft.margin.only(top=50)
-                ),
-                ft.Container(
-                    ft.Column(
-                        [
-                            ft.FilledButton(
-                                "Log In", 
-                                width=340, height=45, 
-                                bgcolor="#FF6900", 
-                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), 
-                                color=ft.Colors.WHITE, 
-                                on_click=lambda e: self.page.run_task(self.check_login, login_field, passwordTF)
-                            ),
-                            login_footer
-                        ],
-                        spacing=15
+            self.login_view = ft.Column(
+                [
+                    ft.Text("Log in as Resident", weight=ft.FontWeight.BOLD, size=24, color=ft.Colors.BLACK),
+                    ft.Container(
+                        ft.Column([login_field, passwordTF], spacing=25),
+                        margin=ft.margin.only(top=50)
                     ),
-                    margin=ft.margin.only(top=40)
-                )
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            alignment=ft.MainAxisAlignment.CENTER,
-        )
+                    ft.Container(
+                        ft.Column(
+                            [
+                                ft.FilledButton(
+                                    "Log In", 
+                                    width=340, height=45, 
+                                    bgcolor="#FF6900", 
+                                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), 
+                                    color=ft.Colors.WHITE, 
+                                    on_click=lambda e: self.page.run_task(self.check_login, login_field, passwordTF)
+                                ),
+                                login_footer
+                            ],
+                            spacing=15
+                        ),
+                        margin=ft.margin.only(top=40)
+                    )
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+            )
 
-        # --- 2. BUILD REGISTER VIEW (Back of Card) ---
-        # Only needed for residents
-        if self.type == 1:
+            # --- Resident Register Form ---
             reg_user_tf = ft.TextField(label="Username", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.PERSON, color="#B8B8C1"), width=340)
             reg_email_tf = ft.TextField(label="Email", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.EMAIL, color="#B8B8C1"), width=340)
-            # Added Phone Number Field
             reg_phone_tf = ft.TextField(
                 label="Phone Number", 
                 border_radius=10, 
@@ -122,6 +228,16 @@ class LoginPage:
                 keyboard_type=ft.KeyboardType.PHONE,
                 input_filter=ft.InputFilter(regex_string=r'^[0-9+]*$', allow=True, replacement_string="")
             )
+            # UPDATED: Access Key Field label
+            reg_access_key_tf = ft.TextField(
+                label="Landlord Access Key (6-Digits)", 
+                hint_text="Enter the 6-digit key from your Admin",
+                border_radius=10, 
+                bgcolor="#F3F3F5", 
+                border_width=0, 
+                prefix_icon=ft.Icon(ft.Icons.KEY_OUTLINED, color="#B8B8C1"), 
+                width=340
+            )
             reg_pass_tf = ft.TextField(label="Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK, color="#B8B8C1"), width=340)
             reg_confirm_tf = ft.TextField(label="Confirm Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK_CLOCK, color="#B8B8C1"), width=340)
 
@@ -129,7 +245,7 @@ class LoginPage:
                 [
                     ft.Text("Register New User", weight=ft.FontWeight.BOLD, size=24, color=ft.Colors.BLACK),
                     ft.Container(
-                        ft.Column([reg_user_tf, reg_email_tf, reg_phone_tf, reg_pass_tf, reg_confirm_tf], spacing=15),
+                        ft.Column([reg_user_tf, reg_email_tf, reg_phone_tf, reg_access_key_tf, reg_pass_tf, reg_confirm_tf], spacing=15),
                         margin=ft.margin.only(top=30)
                     ),
                     ft.Container(
@@ -141,7 +257,7 @@ class LoginPage:
                                     bgcolor="#FF6900", 
                                     style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), 
                                     color=ft.Colors.WHITE, 
-                                    on_click=lambda e: self.page.run_task(self.sign_up, reg_user_tf, reg_email_tf, reg_phone_tf, reg_pass_tf, reg_confirm_tf)
+                                    on_click=lambda e: self.page.run_task(self.sign_up, reg_user_tf, reg_email_tf, reg_phone_tf, reg_access_key_tf, reg_pass_tf, reg_confirm_tf)
                                 ),
                                 ft.Row(
                                     [
@@ -164,9 +280,11 @@ class LoginPage:
                 alignment=ft.MainAxisAlignment.CENTER,
             )
 
+            current_view = self.login_view
+            
         # --- 3. MAIN CARD CONTAINER ---
         self.card_container = ft.Container(
-            content=self.login_view, 
+            content=current_view,
             padding=ft.padding.only(top=35, left=20, right=20, bottom=45),
             border_radius=12,
             bgcolor=ft.Colors.WHITE,
@@ -210,8 +328,9 @@ class LoginPage:
             bgcolor="#FFFBEB"
         )
 
+
     async def flip_card(self, e):
-        """Simulates a flip by shrinking X-scale to 0, swapping content, and expanding back."""
+        """Simulates a flip for resident form toggle."""
         # 1. Shrink width to 0 (Turn to edge)
         self.card_container.scale = ft.Scale(scale_x=0, scale_y=1)
         self.card_container.update()
@@ -230,6 +349,129 @@ class LoginPage:
         self.card_container.scale = ft.Scale(scale_x=1, scale_y=1)
         self.card_container.update()
 
+    # NEW METHOD: For Admin Login/Register Toggle
+    async def flip_admin_card(self):
+        """Simulates a flip for the admin panel toggle."""
+        self.card_container.scale = ft.Scale(scale_x=0, scale_y=1)
+        self.card_container.update()
+        
+        await asyncio.sleep(0.3)
+        
+        if self.is_registering_admin:
+            self.card_container.content = self.admin_login_view
+            self.is_registering_admin = False
+        else:
+            self.card_container.content = self.admin_register_view
+            self.is_registering_admin = True
+        
+        self.card_container.scale = ft.Scale(scale_x=1, scale_y=1)
+        self.card_container.update()
+
+
+    # NEW ADMIN LOGIN: Check against DB for role="admin"
+    async def check_admin_login(self, emailTF, passwordTF):
+        email = emailTF.value.strip()
+        password = passwordTF.value
+
+        if email == "":
+            emailTF.error_text = "Please enter your email!"
+            self.page.update()
+            return
+        
+        regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+        if not re.fullmatch(regex, email):
+            emailTF.error_text = "Please enter a valid email!"
+            self.page.update()
+            return
+
+        # Fetch user by email and check for 'admin' role
+        user_data = await self.page.data.get_user_by_email_and_role(email, "admin")
+
+        if len(user_data) == 0:
+            create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.PERSON_OFF_OUTLINED, color=ft.Colors.RED), "No Admin account found with this email.", ft.Colors.RED)
+            emailTF.error_text = "No Admin found!"
+            passwordTF.error_text = ""
+            passwordTF.value = ""
+            self.page.update()
+            return
+
+        # User found, check password
+        if user_data[0][3] != password:
+            create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.PERSON_OFF_OUTLINED, color=ft.Colors.RED), "Incorrect password.", ft.Colors.RED)
+            emailTF.error_text = ""
+            passwordTF.error_text = "Incorrect password!"
+            passwordTF.value = ""
+            self.page.update()
+            return
+
+        # Login successful
+        emailTF.error_text = ""
+        passwordTF.error_text = ""
+        self.page.data.set_active_user(user_data[0][0])
+        self.page.go("/active-admin")
+        self.page.update()
+        return
+
+    # NEW ADMIN REGISTRATION: Create user with role="admin"
+    async def sign_up_admin(self, user_tf, email_tf, pass_tf, confirm_tf):
+        username = user_tf.value.strip()
+        email = email_tf.value.strip()
+        password = pass_tf.value
+        confirm_password = confirm_tf.value
+
+        user_tf.error_text = ""
+        email_tf.error_text = ""
+        pass_tf.error_text = ""
+        confirm_tf.error_text = ""
+        has_error = False
+
+        if len(username) < 3 or len(username) > 24:
+            user_tf.error_text = "Username must be > 3 and < 24 chars"
+            has_error = True
+
+        res = await self.page.data.get_user_by_name(username)
+        if len(res) > 0:
+            user_tf.error_text = "Username already exists"
+            has_error = True
+
+        regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+        if email == "" or not re.fullmatch(regex, email):
+            email_tf.error_text = "Please enter a valid email"
+            has_error = True
+
+        # Check if email is already in use by ANY user (admin or resident)
+        res = await self.page.data.get_user_by_email(email) 
+        if len(res) > 0:
+            email_tf.error_text = "Email already in use"
+            has_error = True
+
+        if len(password) < 6:
+            pass_tf.error_text = "Password must be 6+ chars"
+            has_error = True
+
+        if password != confirm_password:
+            confirm_tf.error_text = "Passwords do not match"
+            has_error = True
+
+        if has_error:
+            self.page.update()
+            return
+
+        # Create user with role="admin" - Key is generated inside create_user
+        await self.page.data.create_user(username, email, password, role="admin")
+        
+        # Reset fields and flip back
+        user_tf.value = ""
+        email_tf.value = ""
+        pass_tf.value = ""
+        confirm_tf.value = ""
+        
+        await self.flip_admin_card() # Go back to login
+        create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.PERSON_ADD_ALT_1_OUTLINED, color=ft.Colors.GREEN), f"Admin account created! Please log in as {username}", ft.Colors.GREEN_500)
+        self.page.update()
+
+
+    # EXISTING METHOD: Resident Login Check
     async def check_login(self, loginTF, passwordTF):
         login_val = loginTF.value.strip()
         password = passwordTF.value
@@ -238,34 +480,20 @@ class LoginPage:
             loginTF.error_text = "Please enter your username!" if self.type == 1 else "Please enter your email!"
             self.page.update()
             return
-        
-        # --- ADMIN LOGIN (EMAIL) ---
-        if self.type == 0:
-            regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
-            if not re.fullmatch(regex, login_val):
-                loginTF.error_text = "Please enter a valid email!"
-                self.page.update()
-                return
-
-            if login_val != self.admin_email or password != self.admin_password:
-                create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.PERSON_OFF_OUTLINED, color=ft.Colors.RED), "No user found! Double check your email or password.", ft.Colors.RED)
-                loginTF.error_text = "No user found!"
-                passwordTF.error_text = "Incorrect email or password!"
-                passwordTF.value = ""
-                self.page.update()
-                return
-            
-            loginTF.error_text = ""
-            passwordTF.error_text = ""
-            self.page.go("/active-admin")
-            self.page.update()
-            return
 
         # --- RESIDENT LOGIN (USERNAME) ---
         if self.type == 1:
             user_data = await self.page.data.get_user_by_name(login_val)
+            
+            # Check if user exists, password matches, AND user role is NOT admin (prevent admin login via resident path)
+            is_admin = False
+            if len(user_data) > 0:
+                try:
+                    u_data = json.loads(user_data[0][4])
+                    if u_data.get("role") == "admin": is_admin = True
+                except: pass
 
-            if len(user_data) == 0 or user_data[0][3] != password:
+            if len(user_data) == 0 or user_data[0][3] != password or is_admin:
                 create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.PERSON_OFF_OUTLINED, color=ft.Colors.RED), "No user found! Double check your username or password.", ft.Colors.RED)
                 loginTF.error_text = "No user found!"
                 passwordTF.error_text = "Incorrect username or password!"
@@ -280,19 +508,29 @@ class LoginPage:
             self.page.go("/active-resident")
             self.page.update()
 
-    async def sign_up(self, user_tf, email_tf, phone_tf, pass_tf, confirm_tf):
+    # EXISTING METHOD: Resident Sign Up
+    async def sign_up(self, user_tf, email_tf, phone_tf, access_key_tf, pass_tf, confirm_tf):
         username = user_tf.value.strip()
         email = email_tf.value.strip()
         phone = phone_tf.value.strip()
+        access_key = access_key_tf.value.strip()
         password = pass_tf.value
         confirm_password = confirm_tf.value
 
         user_tf.error_text = ""
         email_tf.error_text = ""
         phone_tf.error_text = ""
+        access_key_tf.error_text = ""
         pass_tf.error_text = ""
         confirm_tf.error_text = ""
         has_error = False
+        
+        # --- 1. ACCESS KEY VALIDATION (Updated for 6-digit key) ---
+        admin_id = await self.page.data.get_admin_id_by_access_key(access_key)
+        
+        if admin_id is None:
+            access_key_tf.error_text = "Invalid Landlord Access Key"
+            has_error = True
 
         if len(username) < 3 or len(username) > 24:
             user_tf.error_text = "Username must be > 3 and < 24 chars"
@@ -329,13 +567,14 @@ class LoginPage:
             self.page.update()
             return
 
-        # Pass phone number to create_user
-        await self.page.data.create_user(username, email, password, phone)
+        # Create user with role="resident" and link to the validated admin_id
+        await self.page.data.create_user(username, email, password, phone, linked_admin_id=admin_id)
         
         # Reset fields and flip back
         user_tf.value = ""
         email_tf.value = ""
         phone_tf.value = ""
+        access_key_tf.value = ""
         pass_tf.value = ""
         confirm_tf.value = ""
         

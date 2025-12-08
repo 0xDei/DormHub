@@ -99,13 +99,19 @@ class MyRoom(Section):
                     [
                         ft.Text("Your Room", color="#E78B28", size=14, weight=ft.FontWeight.W_500),
                         ft.ListView([
-                            ft.Image(
-                                src=image_src, 
-                                expand=True, 
-                                height=300, 
-                                fit=ft.ImageFit.COVER, 
-                                border_radius=10
+                            # --- MODIFICATION START ---
+                            ft.GestureDetector(
+                                content=ft.Image(
+                                    src=image_src, 
+                                    expand=True, 
+                                    height=300, 
+                                    fit=ft.ImageFit.COVER, 
+                                    border_radius=10
+                                ),
+                                # Run task to open the dialog when the image is tapped
+                                on_tap=lambda e, src=image_src: self.resident_page.page.run_task(self.show_full_image_dialog, src)
                             )
+                            # --- MODIFICATION END ---
                         ], height=300, expand=True),
                         ft.Divider(2, color="#FEF3C6"),
                         ft.Row(
@@ -234,3 +240,23 @@ class MyRoom(Section):
             ),
             expand=True
         )
+
+    # --- NEW FUNCTION TO DISPLAY IMAGE IN A DIALOG ---
+    async def show_full_image_dialog(self, image_src):
+        """Displays the room image in a modal dialog."""
+        
+        # Determine the Room ID for the title
+        room_id = self.resident_page.data.get("room_id", "N/A")
+        
+        dlg = ft.AlertDialog(
+            title=ft.Text(f"Room #{room_id} View"),
+            content=ft.Container(
+                ft.Image(src=image_src, fit=ft.ImageFit.CONTAIN),
+                width=500,  # Set maximum width
+                height=400, # Set maximum height
+                expand=True
+            ),
+            actions=[ft.TextButton("Close", on_click=lambda e: self.resident_page.page.close(dlg))],
+            content_padding=0 # Remove padding around the image container
+        )
+        self.resident_page.page.open(dlg)

@@ -60,23 +60,7 @@ class Residents(Section):
                     spacing=1,
                     expand=True
                 ),
-                ft.Container(
-                    ft.FilledButton(
-                        "Add Resident", 
-                        icon=ft.Icons.PERSON_ADD_ALT_1_ROUNDED, 
-                        icon_color=ft.Colors.WHITE, 
-                        bgcolor="#FE9A00", 
-                        color=ft.Colors.WHITE, 
-                        elevation=0, 
-                        width=140, 
-                        height=30, 
-                        style=ft.ButtonStyle(
-                            shape=ft.RoundedRectangleBorder(radius=7), 
-                            text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD)
-                        ),
-                        on_click=self.show_add_resident
-                    )
-                )
+                # The Add Resident button previously here has been removed.
             ]
         )
 
@@ -185,18 +169,37 @@ class Residents(Section):
             users = await self.page.data.get_all_users()
             self.all_residents = []
             
+            # --- MODIFIED FILTERING LOGIC ---
+            current_admin_id = self.page.data.get_active_user() # Get the logged-in admin's ID
+            
             for user in users:
-                data = json.loads(user[4])
-                self.all_residents.append({
-                    "id": user[0],
-                    "username": user[1],
-                    "email": user[2],
-                    "password": user[3],
-                    "room_id": data.get("room_id", "N/A"),
-                    "phone": data.get("phone_number", "N/A"),
-                    "due_date": data.get("due_date", "N/A"),
-                    "data": data
-                })
+                user_id = user[0]
+                
+                # 1. Skip the logged-in admin themselves
+                if user_id == current_admin_id:
+                    continue 
+                
+                try:
+                    user_data = json.loads(user[4])
+
+                    # 2. Only include residents linked to this admin
+                    if user_data.get("role") == "resident" and user_data.get("linked_admin_id") == current_admin_id:
+                        # Proceed to process this user as a resident of this admin
+                        self.all_residents.append({
+                            "id": user_id,
+                            "username": user[1],
+                            "email": user[2],
+                            "password": user[3],
+                            "room_id": user_data.get("room_id", "N/A"),
+                            "phone": user_data.get("phone_number", "N/A"),
+                            "due_date": user_data.get("due_date", "N/A"),
+                            "data": user_data 
+                        })
+                except Exception as e:
+                    # Skip user if data is corrupted
+                    # print(f"Skipping user {user_id} due to data error: {e}")
+                    continue
+            # --- END MODIFIED FILTERING LOGIC ---
 
             await self.update_stats()
             # Initial sort and display
@@ -397,14 +400,50 @@ class Residents(Section):
         email_f = ft.TextField(label="Email", value=resident['email'], border_radius=10)
         phone_f = ft.TextField(label="Phone", value=resident['phone'], border_radius=10)
 
-        rooms = await self.page.data.get_all_rooms()
-        room_opts = [ft.dropdown.Option("N/A", "No Room")]
-        for room in rooms:
-            room_opts.append(ft.dropdown.Option(str(room[0]), f"Room {room[0]}"))
+        # 1. Get the current Admin ID
+        current_admin_id = self.admin_page.page.data.get_active_user()
 
+        # 2. Fetch only Rooms owned by this Admin to populate the dropdown
+        rooms = await self.page.data.get_all_rooms(admin_user_id=current_admin_id)
+
+        all_users = await self.page.data.get_all_users() # Fetch all users to calculate occupancy
+
+        # Calculate current occupancy for all rooms (excluding the resident being edited)
+        room_occupancy_map = {}
+        current_resident_id = resident['id']
+        
+        for user in all_users:
+            user_id = user[0]
+            if user_id == current_resident_id:
+                continue 
+            
+            try:
+                u_data = json.loads(user[4])
+                room_id = str(u_data.get("room_id", "N/A"))
+                if room_id != "N/A":
+                    room_occupancy_map[room_id] = room_occupancy_map.get(room_id, 0) + 1
+            except:
+                continue
+
+        room_opts = [ft.dropdown.Option("N/A", "No Room")]
+        current_resident_room_id = str(resident['room_id'])
+        
+        # Build options, filtering out full rooms
+        for room in rooms:
+            room_id_str = str(room[0])
+            max_capacity = room[4] # bed_count is at index 4
+            current_occupancy = room_occupancy_map.get(room_id_str, 0)
+            
+            is_current_room = room_id_str == current_resident_room_id
+            is_available = current_occupancy < max_capacity
+            
+            if is_current_room or is_available:
+                 room_opts.append(ft.dropdown.Option(room_id_str, f"Room {room_id_str} ({current_occupancy}/{max_capacity})"))
+            
+        
         room_dd = ft.Dropdown(
             label="Room",
-            value=str(resident['room_id']),
+            value=current_resident_room_id,
             options=room_opts,
             border_radius=10
         )
@@ -449,10 +488,14 @@ class Residents(Section):
         )
 
         async def update_action(e):
+            # The dropdown already filters occupied rooms. 
+            # We proceed with the update as no further capacity validation is needed.
+            new_room_id = room_dd.value
+            
             try:
                 data = resident['data'].copy()
                 data['phone_number'] = phone_f.value.strip() if phone_f.value else "N/A"
-                data['room_id'] = room_dd.value if room_dd.value != "N/A" else "N/A"
+                data['room_id'] = new_room_id if new_room_id != "N/A" else "N/A"
                 
                 if selected_date[0]:
                     move_in_dt = selected_date[0]
@@ -474,7 +517,10 @@ class Residents(Section):
                 create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN), "Resident updated!", ft.Colors.GREEN)
                 await self.load_data()
             except Exception as e:
-                print(f"Error: {e}")
+                # Log and display generic error
+                print(f"Error during update: {e}")
+                create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.ERROR, color=ft.Colors.RED), "Update failed due to an unexpected error.", ft.Colors.RED)
+
 
         dlg = ft.AlertDialog(
             title=ft.Text("Edit Resident"),

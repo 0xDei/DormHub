@@ -8,7 +8,7 @@ def main(page: ft.Page):
     page.title = "DormHub"
     page.window.width = 900
     page.window.height = 720
-    page.window.resizable = False
+    page.window.resizable = True
     page.theme_mode = ft.ThemeMode.LIGHT
 
     page.data = Database()

@@ -139,13 +139,33 @@ class Maintenance(Section):
 
     async def load_data(self):
         try:
-            # Fetch all requests and users
-            requests = await self.page.data.get_all_requests()
-            users = await self.page.data.get_all_users()
+            # Fetch all requests and ALL users
+            all_requests = await self.page.data.get_all_requests()
+            all_users = await self.page.data.get_all_users()
             
-            # Map user IDs to usernames
-            user_map = {user[0]: user[1] for user in users}
-
+            current_admin_id = self.admin_page.page.data.get_active_user() # GET ADMIN ID
+            
+            # 1. Determine which user IDs are linked to the current Admin
+            linked_user_ids = {current_admin_id} # Always include the admin itself (if they post something)
+            linked_user_map = {} # Map ID -> Username
+            
+            for user in all_users:
+                user_id = user[0]
+                try:
+                    u_data = json.loads(user[4])
+                    # If user is a resident linked to this admin
+                    if u_data.get("role") == "resident" and u_data.get("linked_admin_id") == current_admin_id:
+                        linked_user_ids.add(user_id)
+                        linked_user_map[user_id] = user[1]
+                    # If user is the Admin themselves
+                    elif user_id == current_admin_id:
+                        linked_user_map[user_id] = user[1]
+                except:
+                    continue
+            
+            # 2. Filter Requests: only process requests made by linked users
+            requests = [req for req in all_requests if req[5] in linked_user_ids]
+            
             self.all_requests = []
             pending_count = 0
             inprogress_count = 0
@@ -172,8 +192,8 @@ class Maintenance(Section):
                             "desc": issue.get("desc", "No Description"),
                             "status": status,
                             "urgency": urgency,
-                            "username": user_map.get(req[5], "Unknown User"),
-                            "date_created": req[6]
+                            "username": linked_user_map.get(req[5], "Unknown User"), # Use linked map
+                            "date_created": req[6] # Raw string
                         })
                     except Exception as e:
                         print(f"Error parsing request {req[0]}: {e}")
@@ -197,7 +217,14 @@ class Maintenance(Section):
         
         # Sort by date (newest first)
         try:
-            sorted_requests = sorted(self.all_requests, key=lambda x: int(x["date_created"] or 0), reverse=True)
+            # FIX: Robust timestamp conversion before sorting
+            def get_timestamp_safe(date_str):
+                try:
+                    return int(date_str)
+                except (ValueError, TypeError):
+                    return 0
+                    
+            sorted_requests = sorted(self.all_requests, key=lambda x: get_timestamp_safe(x["date_created"]), reverse=True)
         except:
             sorted_requests = self.all_requests
 
@@ -239,6 +266,7 @@ class Maintenance(Section):
 
                 # Date formatting
                 try:
+                    # FIX: Robust timestamp conversion
                     dt = datetime.fromtimestamp(int(r["date_created"]))
                     date_str = dt.strftime("%b %d, %Y")
                 except:
@@ -307,6 +335,15 @@ class Maintenance(Section):
         try:
             await self.page.data.update_request_status(request_id, new_status)
             create_banner(self.page, ft.Colors.BLUE_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.BLUE), "Status updated!", ft.Colors.BLUE)
-            await self.load_data()
+            
+            # --- START BADGE UPDATE LOGIC ---
+            # 1. Update AdminPage data (recalculates maintenance_count)
+            await self.admin_page.update_data()
+            
+            # 2. Update the parent view (to refresh the navbar with the new badge count)
+            self.admin_page.view.update()
+            # --- END BADGE UPDATE LOGIC ---
+            
+            await self.load_data() # Refresh the list in the Maintenance section
         except Exception as e:
             print(f"Error updating status: {e}")

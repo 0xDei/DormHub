@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import json
 import calendar
 import asyncio
+import random
 
 from pages.sections.section import Section
 from utils.element_factory import create_info_card, create_remark
@@ -48,13 +49,19 @@ class Overview(Section):
             run_spacing=20,
         )
 
+        # --- MODIFICATION START ---
+        # Get the username from the injected admin_page instance
+        admin_username = self.admin_page.username
+        
         header = ft.Row(
             [
-                ft.Text("Welcome back, Admin!", color="#FF6900", size=24, weight=ft.FontWeight.BOLD),
+                # Updated greeting string
+                ft.Text(f"Welcome, Admin {admin_username}!", color="#FF6900", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text("👋", size=24)
             ],
             spacing=5
         )
+        # --- MODIFICATION END ---
 
         self.content = ft.Container(
             ft.Column(
@@ -107,18 +114,42 @@ class Overview(Section):
 
         try:
             # 1. Fetch Data
-            rooms_data = await self.admin_page.page.data.get_all_rooms()
+            all_rooms_data = await self.admin_page.page.data.get_all_rooms()
             requests_data = await self.admin_page.page.data.get_all_requests()
-            users_data = await self.admin_page.page.data.get_all_users()
-            announcements_data = await self.admin_page.page.data.get_announcements()
+            all_users_data = await self.admin_page.page.data.get_all_users()
             
-            # Helper to parse room rent
-            room_rents = {str(r[0]): r[4] for r in rooms_data}
+            current_admin_id = self.admin_page.page.data.get_active_user()
+            
+            # --- FIX 1: Filter users and rooms by linked_admin_id ---
+            users_data = []
+            admin_resident_map = {} # Map user_id to username
+            
+            for user in all_users_data:
+                user_id = user[0]
+                try:
+                    user_record_data = json.loads(user[4])
+                    role = user_record_data.get("role", "resident")
+                    linked_admin_id = user_record_data.get("linked_admin_id")
+                except:
+                    continue 
+
+                is_current_admin = user_id == current_admin_id and role == "admin"
+                is_linked_resident = role == "resident" and linked_admin_id == current_admin_id
+                
+                if is_current_admin or is_linked_resident:
+                    users_data.append(user)
+                    admin_resident_map[user_id] = user[1] # Store username
+
+            # Filter rooms to only include those owned by this admin (admin_user_id is at index 1)
+            rooms_data = [r for r in all_rooms_data if r[1] == current_admin_id]
+
+            # Helper to parse room rent (using the filtered rooms_data)
+            room_rents = {str(r[0]): r[5] for r in rooms_data} # monthly_rent is at index 5
 
             # 2. Process Stats
             total_beds = 0
             for room in rooms_data:
-                total_beds += room[3] # bed_count
+                total_beds += room[4] # bed_count is at index 4
 
             residents_count = 0
             projected_income = 0
@@ -131,17 +162,25 @@ class Overview(Section):
             thirty_days_ago_ts = (now - timedelta(days=30)).timestamp() 
 
             activities = []
-
+            
             for user in users_data:
+                user_id = user[0]
+                user_name = user[1]
+
+                # Skip the admin user when counting residents/income
+                if user_id == current_admin_id and json.loads(user[4]).get("role") == "admin":
+                    continue
+                    
                 try:
                     u_data = json.loads(user[4])
                     room_id = str(u_data.get("room_id", "N/A"))
                     
+                    # These stats only count linked residents
                     if room_id != "N/A":
                         residents_count += 1
                         projected_income += room_rents.get(room_id, 0)
                     
-                    # Process Payments (Activity Source 1)
+                    # Process Payments (Activity Source 1) - ONLY for linked residents
                     for pay in u_data.get("payment_history", []):
                         p_date = pay.get("date", 0)
                         p_amount = pay.get("amount", 0)
@@ -151,28 +190,12 @@ class Overview(Section):
                         
                         activities.append({
                             "type": "payment",
-                            "title": f"Payment received from {user[1]}",
+                            "title": f"Payment received from {user_name}",
                             "desc": f"₱ {p_amount:,}",
                             "timestamp": p_date,
                             "icon": ft.Icons.ATTACH_MONEY,
                             "color": ft.Colors.GREEN_700
                         })
-
-                    # Process Move-ins (Activity Source 2)
-                    move_in = u_data.get("move_in_date", "N/A")
-                    if move_in != "N/A" and room_id != "N/A":
-                        move_in_ts = int(move_in)
-                        
-                        # Only include move-ins from the last 30 days
-                        if move_in_ts > thirty_days_ago_ts:
-                            activities.append({
-                                "type": "move-in",
-                                "title": f"{user[1]} moved in",
-                                "desc": f"Room {room_id}",
-                                "timestamp": move_in_ts,
-                                "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
-                                "color": ft.Colors.BLUE
-                            })
 
                 except Exception as ex:
                     print(f"Error parsing user {user[0]}: {ex}")
@@ -182,10 +205,18 @@ class Overview(Section):
             urgent_count = 0
             urgent_maintenance_list = []
             
+            # List of user IDs of linked residents with assigned rooms
+            admin_resident_room_user_ids = {u[0] for u in users_data if json.loads(u[4]).get("role") == "resident" and json.loads(u[4]).get("room_id") != "N/A"}
+            
             for req in requests_data:
+                # Filter request by user ID belonging to one of this admin's residents
+                req_user_id = req[5]
+                if req_user_id not in admin_resident_room_user_ids:
+                    continue
+                    
                 status = req[3]
                 urgency = req[4]
-                date_created = int(req[6])
+                date_created = req[6] # Raw string from DB
                 
                 if status != "completed":
                     requests_count += 1
@@ -201,22 +232,43 @@ class Overview(Section):
                             "urgency": urgency
                         })
                 
+                request_username = admin_resident_map.get(req_user_id, "Unknown Resident")
+                
+                # FIX: Safely parse date_created
+                date_raw = req[6]
+                try:
+                    timestamp = int(date_raw)
+                except (ValueError, TypeError):
+                    timestamp = 0 # Default to 0 if invalid
+                    
                 activities.append({
                     "type": "request",
                     "title": "Maintenance Request Filed",
                     "desc": f"Room {req[1]} - Status: {status.title()}",
-                    "timestamp": date_created,
+                    "timestamp": timestamp,
                     "icon": ft.Icons.BUILD_CIRCLE_OUTLINED,
                     "color": ft.Colors.ORANGE_700
                 })
 
             # Process Announcements (Activity Source 4)
-            for ann in announcements_data:
+            # Fetch announcements posted by this Admin
+            admin_announcements = await self.admin_page.page.data.get_announcements(admin_user_id=current_admin_id)
+
+            for ann in admin_announcements:
+                # p: id(0), admin_user_id(1), title(2), content(3), date(4), likes(5) 
+                
+                # FIX: Safely parse date (ann[4])
+                date_raw = ann[4]
+                try:
+                    timestamp = int(date_raw)
+                except (ValueError, TypeError):
+                    timestamp = 0
+                    
                 activities.append({
                     "type": "announcement",
                     "title": f"New Announcement Posted",
-                    "desc": ann[1],
-                    "timestamp": int(ann[3]),
+                    "desc": ann[2], # Title is at index 2
+                    "timestamp": timestamp,
                     "icon": ft.Icons.CAMPAIGN_OUTLINED,
                     "color": ft.Colors.RED_ACCENT_700
                 })
@@ -226,10 +278,11 @@ class Overview(Section):
             recent_activities = activities[:5] # Get top 5 most relevant
 
             # 3. Build UI Elements
+            # Calculate occupancy based only on linked residents/owned rooms
             bed_count_safe = max(total_beds, 1) 
             percent = (residents_count / bed_count_safe) * 100
 
-            # --- Top Stats Cards (Logic remains the same) ---
+            # --- Top Stats Cards ---
             card_col = {"xs": 12, "sm": 6, "md": 3}
 
             self.info_cards_container.controls = [
@@ -239,10 +292,20 @@ class Overview(Section):
                 self.create_stat_card("Pending Tasks", str(requests_count), f"{urgent_count} Urgent", ft.Icon(ft.Icons.ERROR_OUTLINE), "#FFE2E2", "#EC2C33", col=card_col),
             ]
 
-            # --- Charts (Logic remains the same) ---
+            # --- Charts ---
             
             # 1. Occupancy Trend (Line Chart)
-            resident_move_ins = [int(json.loads(user[4]).get("move_in_date")) for user in users_data if json.loads(user[4]).get("move_in_date") != "N/A" and json.loads(user[4]).get("room_id") != "N/A"]
+            # Filter resident_move_ins to only include linked residents
+            resident_move_ins = []
+            for user in users_data:
+                try:
+                    user_data = json.loads(user[4])
+                    move_in_date = user_data.get("move_in_date")
+                    # Ensure it's a resident, has a move-in date, and is assigned a room
+                    if user_data.get("role") == "resident" and move_in_date != "N/A" and user_data.get("room_id") != "N/A":
+                        resident_move_ins.append(int(move_in_date))
+                except:
+                    continue
 
             trend_points = []
             trend_labels = []
@@ -349,11 +412,22 @@ class Overview(Section):
                     event_ts = int(act["timestamp"])
                     diff = now_ts - event_ts
                     
-                    if diff < 60: time_str = "Just now"
-                    elif diff < 3600: time_str = f"{int(diff/60)}m ago"
-                    elif diff < 86400: time_str = f"{int(diff/3600)}h ago"
-                    else: time_str = f"{int(diff/86400)}d ago"
-
+                    time_str = ""
+                    
+                    if diff < 60: 
+                        time_str = "Just now"
+                    else:
+                        dt = datetime.fromtimestamp(event_ts)
+                        
+                        if diff < 3600: 
+                            time_str = f"{int(diff/60)}m ago"
+                        elif diff < 86400: 
+                            time_str = f"{int(diff/3600)}h ago"
+                        else:
+                            time_str = dt.strftime("%b %d")
+                            if diff >= 86400 * 365:
+                                time_str = dt.strftime("%b %d, %Y")
+                    
                     # Refactored: Call helper function for creating the activity item UI
                     activity_display_items.append(self.create_activity_item(act, time_str))
 
