@@ -34,10 +34,25 @@ class AdminPage:
                 NavBarButton(ft.Icons.PAYMENTS_OUTLINED, "Payments", lambda e: self.change_tab(AdminPayment(self), "Payments")),
                 NavBarButton(ft.Icons.BUILD_CIRCLE_OUTLINED, "Maintenance", lambda e: self.change_tab(Maintenance(self), "Maintenance")),
                 NavBarButton(ft.Icons.CAMPAIGN_OUTLINED, "Announcements", lambda e: self.change_tab(AdminAnnouncements(self), "Announcements")),
-                # Removed: NavBarButton(ft.Icons.SETTINGS_OUTLINED, "Settings", lambda e: self.change_tab(Settings(self), "Settings"))
             ]
         )
-        self.view = ft.View("/active-admin", [ft.Row([self.navbar], spacing=0, vertical_alignment=ft.CrossAxisAlignment.STRETCH, expand=True)], bgcolor="#FFFBEB", padding=ft.padding.only(top=-4))
+        
+        # --- FIX: Set Overview as the initial section ---
+        initial_section = Overview(self)
+        
+        self.view = ft.View(
+            "/active-admin", 
+            [
+                ft.Row(
+                    [self.navbar, initial_section], # Add the initial section here
+                    spacing=0, 
+                    vertical_alignment=ft.CrossAxisAlignment.STRETCH, 
+                    expand=True
+                )
+            ], 
+            bgcolor="#FFFBEB", 
+            padding=ft.padding.only(top=-4)
+        )
         return self.view
 
     def change_tab(self, section, button_text):

@@ -163,16 +163,18 @@ class Overview(Section):
                     if move_in != "N/A" and room_id != "N/A":
                         move_in_ts = int(move_in)
                         
-                        # Only include move-ins from the last 30 days
-                        if move_in_ts > thirty_days_ago_ts:
-                            activities.append({
-                                "type": "move-in",
-                                "title": f"{user[1]} moved in",
-                                "desc": f"Room {room_id}",
-                                "timestamp": move_in_ts,
-                                "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
-                                "color": ft.Colors.BLUE
-                            })
+                        # --- FIX: Exclude irrelevant move-in data ---
+                        if user[1] not in ["Joshua", "JSH"]:
+                            # Only include move-ins from the last 30 days
+                            if move_in_ts > thirty_days_ago_ts:
+                                activities.append({
+                                    "type": "move-in",
+                                    "title": f"{user[1]} moved in",
+                                    "desc": f"Room {room_id}",
+                                    "timestamp": move_in_ts,
+                                    "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
+                                    "color": ft.Colors.BLUE
+                                })
 
                 except Exception as ex:
                     print(f"Error parsing user {user[0]}: {ex}")
@@ -349,10 +351,20 @@ class Overview(Section):
                     event_ts = int(act["timestamp"])
                     diff = now_ts - event_ts
                     
-                    if diff < 60: time_str = "Just now"
-                    elif diff < 3600: time_str = f"{int(diff/60)}m ago"
-                    elif diff < 86400: time_str = f"{int(diff/3600)}h ago"
-                    else: time_str = f"{int(diff/86400)}d ago"
+                    time_str = ""
+                    if diff < 60: 
+                        time_str = "Just now"
+                    elif diff < 3600: 
+                        time_str = f"{int(diff/60)}m ago"
+                    elif diff < 86400: 
+                        time_str = f"{int(diff/3600)}h ago"
+                    else: 
+                        # FIX: For older activities, display the date instead of relative time 
+                        if act.get('type') == 'move-in':
+                            dt = datetime.fromtimestamp(event_ts)
+                            time_str = dt.strftime("%b %d")
+                        else:
+                            time_str = f"{int(diff/86400)}d ago"
 
                     # Refactored: Call helper function for creating the activity item UI
                     activity_display_items.append(self.create_activity_item(act, time_str))
