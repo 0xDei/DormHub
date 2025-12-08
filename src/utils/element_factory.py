@@ -3,8 +3,7 @@ from pages.components.navbar_button import NavBarButton
 
 active_banner = None
 
-# this might be unecessary and makes things more complicated
-def get_icon(icon_size=64, isColumn=True, radius=16, pad=16, text1_size=20, text2_size=16, marg=ft.margin.only(0, 0, 0, 0)):
+def get_icon(icon_size=64, isColumn=True, radius=16, pad=16, text1_size=20, text2_size=20, marg=ft.margin.only(0, 0, 0, 0)):
     icon = ft.Container(
         ft.Image(
             src=f"../assets/icon{icon_size}.png",
@@ -56,22 +55,28 @@ def get_navbar_icon(isAdmin):
         )
     )
 
-def create_info_card(name, content, icon, icon_placement, bgcolor, width, height):
+def create_info_card(name, content, icon, icon_placement, bgcolor, width, height, col=None):
+    # FIX: Handle cases where icon.size is None by defaulting to 24
+    icon_size = icon.size if icon.size is not None else 24
 
     card_name = ft.Column([ft.Text(name, size=12, color=ft.Colors.GREY_600), *content], spacing=0, expand=True)
-    card_icon = ft.Container(icon, bgcolor=bgcolor, border_radius=7, width=icon.size * 1.5, height=icon.size * 1.5)
+    card_icon = ft.Container(icon, bgcolor=bgcolor, border_radius=7, width=icon_size * 1.5, height=icon_size * 1.5)
     
     row_content = [card_icon, card_name]
     if icon_placement == "right": row_content = [card_name, card_icon]    
+
+    # If col is provided, ignore fixed width to allow responsive sizing
+    container_width = width if col is None else None
 
     return ft.Container(
         ft.Row(row_content),
         padding=ft.padding.only(left=20, right=20, top=18, bottom=20),
         border_radius=10,
-        width=width,
+        width=container_width,
         height=height,
         bgcolor=ft.Colors.WHITE,
-        border=ft.border.all(2, "#FEF3C6")
+        border=ft.border.all(2, "#FEF3C6"),
+        col=col # Apply responsive column setting
     )
 
 def create_remark(remark, color, bgcolor):

@@ -1,10 +1,11 @@
 import flet as ft
 import json
-from datetime import datetime
-
+import time 
 from pages.sections.my_room import MyRoom
 from pages.sections.payment import Payment
 from pages.sections.requests import Requests
+from pages.sections.resident_announcements import ResidentAnnouncements
+from pages.sections.settings import Settings # Import Settings
 from pages.components.navbar import NavBar
 from pages.components.navbar_button import NavBarButton
 
@@ -12,78 +13,106 @@ class ResidentPage:
     def __init__(self, page: ft.Page, user_id):
         self.page = page
         self.id = user_id
-        self.username = None
-        self.email = None
-        self.password = None
-        self.user_data = None
-        self.view = None
-        self.data = None
-        self.navbar = None
+        self.username = None; self.email = None; self.password = None; self.data = None
+        self.unread_count = 0 
+        self.announcements_btn = None 
 
     async def update_data(self):
         res = await self.page.data.get_user_by_id(self.id)
-        self.username = res[0][1]        
-        self.email = res[0][2]        
-        self.password = res[0][3]
-        self.data = json.loads(res[0][4])
+        if not res: return
+        self.username = res[0][1]; self.email = res[0][2]; self.password = res[0][3]
+        try: self.data = json.loads(res[0][4])
+        except: self.data = {"room_id": "N/A", "move_in_date": "N/A", "due_date": "N/A", "payment_history": [], "unpaid_dues": [], "phone_number": "N/A"}
+        
+        for k in ["room_id", "move_in_date", "due_date", "phone_number"]: 
+            if k not in self.data: self.data[k] = "N/A"
+        for k in ["payment_history", "unpaid_dues"]:
+            if k not in self.data: self.data[k] = []
+        if "last_checked_announcements" not in self.data:
+            self.data["last_checked_announcements"] = 0
+
+        # --- Count Unread Announcements ---
+        try:
+            posts = await self.page.data.get_announcements()
+            self.unread_count = 0
+            if posts:
+                last_checked = self.data.get("last_checked_announcements", 0)
+                for p in posts:
+                    if int(p[3]) > last_checked:
+                        self.unread_count += 1
+        except Exception as e:
+            print(f"Error checking unread: {e}")
+            self.unread_count = 0
 
         if self.data["room_id"] != "N/A":
-            requests_data = []
-            all_requests = await self.page.data.custom_query("SELECT * FROM requests WHERE room_id = %s AND user_id = %s", (self.data["room_id"], self.id))
-            for request_info in all_requests:
-                requests_data.append({
-                    "issue": json.loads(request_info[2]),
-                    "status": request_info[3], 
-                    "urgency": request_info[4], 
-                    "date_created": request_info[6],
-                    "date_updated": request_info[7]
-                })
-
-            self.data.update({"requests_data": requests_data})
-
-            res = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count FROM rooms WHERE id = %s", (self.data["room_id"],))
-
-            self.data.update({"monthly_rent": res[0][1]})
-            self.data.update({"bed_count": res[0][2]})
-
-            roommates = []
-            roommate_data = []
-            for roommate_id in json.loads(res[0][0]):
-                if roommate_id != self.id:
-                    user_info = await self.page.data.custom_query("SELECT username, data FROM users WHERE id = %s", (roommate_id,))
-                    roommates.append(user_info[0][0])
-                    roommate_data.append(json.loads(user_info[0][1]))
-
-            self.data.update({"roommates": roommates})
-            self.data.update({"roommate_data": roommate_data})
-
+            reqs = await self.page.data.custom_query("SELECT * FROM requests WHERE room_id=%s AND user_id=%s", (self.data["room_id"], self.id))
+            self.data["requests_data"] = [{"id": r[0], "issue": json.loads(r[2]), "status": r[3], "urgency": r[4], "date_created": r[6]} for r in reqs]
+            
+            room = await self.page.data.custom_query("SELECT residents, monthly_rent, bed_count, current_status, thumbnail FROM rooms WHERE id=%s", (self.data["room_id"],))
+            if room:
+                self.data.update({"monthly_rent": room[0][1], "bed_count": room[0][2], "room_status": room[0][3], "thumbnail": room[0][4]})
+                try:
+                    all_users = await self.page.data.get_all_users()
+                    self.data["roommates"] = [u[1] for u in all_users if u[0] != self.id and json.loads(u[4]).get("room_id") == self.data["room_id"]]
+                except: self.data["roommates"] = []
+        else:
+            self.data.update({"requests_data": [], "monthly_rent": 0, "thumbnail": "placeholder.jpg", "roommates": []})
 
     async def show(self):
-        self.navbar = NavBar(
-            isAdmin=False, 
-            current_page=self,
-            buttons=[
-                NavBarButton(ft.Icons.BED, "My Room", lambda e: self.page.run_task(self.show_section, MyRoom(self)), True),
-                NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.page.run_task(self.show_section, Payment(self))),
-                NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.page.run_task(self.show_section, Requests(self)))
-            ]
+        # Load data first so unread count is accurate
+        await self.update_data()
+
+        # Create Announcements Button
+        self.announcements_btn = NavBarButton(
+            ft.Icons.CAMPAIGN_OUTLINED, 
+            "Announcements", 
+            lambda e: self.change_tab(ResidentAnnouncements(self), "Announcements"),
+            badge_count=self.unread_count
         )
+
+        self.navbar = NavBar(isAdmin=False, current_page=self, buttons=[
+            NavBarButton(ft.Icons.BED, "My Room", lambda e: self.change_tab(MyRoom(self), "My Room"), True),
+            self.announcements_btn, 
+            NavBarButton(ft.Icons.CREDIT_CARD_ROUNDED, "Payments", lambda e: self.change_tab(Payment(self), "Payments")),
+            NavBarButton(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, "Requests", lambda e: self.change_tab(Requests(self), "Requests")),
+            NavBarButton(ft.Icons.SETTINGS_OUTLINED, "Settings", lambda e: self.change_tab(Settings(self), "Settings")) # Added Button
+        ])
+        
+        initial_section = MyRoom(self)
         
         self.view = ft.View(
-            "/page-resident",
+            "/active-resident",
             [
-                ft.Row([self.navbar], spacing=0, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
-            ],
-            bgcolor="#FFFBEB",
+                ft.Row(
+                    [self.navbar, initial_section], 
+                    spacing=0, 
+                    vertical_alignment=ft.CrossAxisAlignment.STRETCH, 
+                    expand=True
+                )
+            ], 
+            bgcolor="#FFFBEB", 
             padding=ft.padding.only(top=-4)
         )
-
         return self.view
 
-    
+    def change_tab(self, section, button_text):
+        self.navbar.highlight_tab(button_text)
+        
+        if button_text == "Announcements":
+            self.page.run_task(self.mark_announcements_read)
+            
+        self.page.run_task(self.show_section, section)
+
+    async def mark_announcements_read(self):
+        self.announcements_btn.set_badge_count(0)
+        self.unread_count = 0
+        self.data["last_checked_announcements"] = int(time.time())
+        await self.page.data.update_user(self.id, self.username, self.email, self.password, self.data)
+
     async def show_section(self, section):
-        if len(self.view.controls[0].controls) > 1: self.view.controls[0].controls[1] = section
-        else: self.view.controls[0].controls.append(section)
+        if len(self.view.controls[0].controls) > 1: 
+            self.view.controls[0].controls[1] = section
+        else: 
+            self.view.controls[0].controls.append(section)
         await self.update_data()
         self.view.update()
-    
