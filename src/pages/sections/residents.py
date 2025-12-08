@@ -398,13 +398,44 @@ class Residents(Section):
         phone_f = ft.TextField(label="Phone", value=resident['phone'], border_radius=10)
 
         rooms = await self.page.data.get_all_rooms()
-        room_opts = [ft.dropdown.Option("N/A", "No Room")]
-        for room in rooms:
-            room_opts.append(ft.dropdown.Option(str(room[0]), f"Room {room[0]}"))
+        all_users = await self.page.data.get_all_users() # Fetch all users to calculate occupancy
 
+        # Calculate current occupancy for all rooms (excluding the resident being edited)
+        room_occupancy_map = {}
+        current_resident_id = resident['id']
+        
+        for user in all_users:
+            user_id = user[0]
+            if user_id == current_resident_id:
+                continue 
+            
+            try:
+                u_data = json.loads(user[4])
+                room_id = str(u_data.get("room_id", "N/A"))
+                if room_id != "N/A":
+                    room_occupancy_map[room_id] = room_occupancy_map.get(room_id, 0) + 1
+            except:
+                continue
+
+        room_opts = [ft.dropdown.Option("N/A", "No Room")]
+        current_resident_room_id = str(resident['room_id'])
+        
+        # Build options, filtering out full rooms
+        for room in rooms:
+            room_id_str = str(room[0])
+            max_capacity = room[3] # bed_count is at index 3
+            current_occupancy = room_occupancy_map.get(room_id_str, 0)
+            
+            is_current_room = room_id_str == current_resident_room_id
+            is_available = current_occupancy < max_capacity
+            
+            if is_current_room or is_available:
+                 room_opts.append(ft.dropdown.Option(room_id_str, f"Room {room_id_str} ({current_occupancy}/{max_capacity})"))
+            
+        
         room_dd = ft.Dropdown(
             label="Room",
-            value=str(resident['room_id']),
+            value=current_resident_room_id,
             options=room_opts,
             border_radius=10
         )
@@ -449,10 +480,14 @@ class Residents(Section):
         )
 
         async def update_action(e):
+            # The dropdown already filters occupied rooms. 
+            # We proceed with the update as no further capacity validation is needed.
+            new_room_id = room_dd.value
+            
             try:
                 data = resident['data'].copy()
                 data['phone_number'] = phone_f.value.strip() if phone_f.value else "N/A"
-                data['room_id'] = room_dd.value if room_dd.value != "N/A" else "N/A"
+                data['room_id'] = new_room_id if new_room_id != "N/A" else "N/A"
                 
                 if selected_date[0]:
                     move_in_dt = selected_date[0]
@@ -474,7 +509,10 @@ class Residents(Section):
                 create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN), "Resident updated!", ft.Colors.GREEN)
                 await self.load_data()
             except Exception as e:
-                print(f"Error: {e}")
+                # Log and display generic error
+                print(f"Error during update: {e}")
+                create_banner(self.page, ft.Colors.RED_100, ft.Icon(ft.Icons.ERROR, color=ft.Colors.RED), "Update failed due to an unexpected error.", ft.Colors.RED)
+
 
         dlg = ft.AlertDialog(
             title=ft.Text("Edit Resident"),

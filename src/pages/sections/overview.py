@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import json
 import calendar
 import asyncio
+import random
 
 from pages.sections.section import Section
 from utils.element_factory import create_info_card, create_remark
@@ -163,18 +164,20 @@ class Overview(Section):
                     if move_in != "N/A" and room_id != "N/A":
                         move_in_ts = int(move_in)
                         
-                        # --- FIX: Exclude irrelevant move-in data ---
-                        if user[1] not in ["Joshua", "JSH"]:
-                            # Only include move-ins from the last 30 days
-                            if move_in_ts > thirty_days_ago_ts:
-                                activities.append({
-                                    "type": "move-in",
-                                    "title": f"{user[1]} moved in",
-                                    "desc": f"Room {room_id}",
-                                    "timestamp": move_in_ts,
-                                    "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
-                                    "color": ft.Colors.BLUE
-                                })
+                        # --- REMOVED: Logic to add 'move-in' activity is removed completely. ---
+                        # if user[1] not in ["Joshua", "JSH"]:
+                        #     if move_in_ts > thirty_days_ago_ts:
+                        #         if move_in_ts == int(now.timestamp()):
+                        #             move_in_ts -= random.random()
+                        #         
+                        #         activities.append({
+                        #             "type": "move-in",
+                        #             "title": f"{user[1]} moved in",
+                        #             "desc": f"Room {room_id}",
+                        #             "timestamp": move_in_ts,
+                        #             "icon": ft.Icons.CHECK_CIRCLE_OUTLINE,
+                        #             "color": ft.Colors.BLUE
+                        #         })
 
                 except Exception as ex:
                     print(f"Error parsing user {user[0]}: {ex}")
@@ -352,20 +355,25 @@ class Overview(Section):
                     diff = now_ts - event_ts
                     
                     time_str = ""
+                    
+                    # --- TIME STRING CALCULATION ---
                     if diff < 60: 
                         time_str = "Just now"
-                    elif diff < 3600: 
-                        time_str = f"{int(diff/60)}m ago"
-                    elif diff < 86400: 
-                        time_str = f"{int(diff/3600)}h ago"
-                    else: 
-                        # FIX: For older activities, display the date instead of relative time 
-                        if act.get('type') == 'move-in':
-                            dt = datetime.fromtimestamp(event_ts)
-                            time_str = dt.strftime("%b %d")
+                    else:
+                        dt = datetime.fromtimestamp(event_ts)
+                        
+                        # Use the specific time format for all older activities for clarity
+                        if diff < 3600: 
+                            time_str = f"{int(diff/60)}m ago"
+                        elif diff < 86400: 
+                            time_str = f"{int(diff/3600)}h ago"
                         else:
-                            time_str = f"{int(diff/86400)}d ago"
-
+                            # Standard format for older activities (excluding time for simplicity)
+                            time_str = dt.strftime("%b %d")
+                            if diff >= 86400 * 365:
+                                time_str = dt.strftime("%b %d, %Y")
+                    # --- END TIME STRING CALCULATION ---
+                    
                     # Refactored: Call helper function for creating the activity item UI
                     activity_display_items.append(self.create_activity_item(act, time_str))
 

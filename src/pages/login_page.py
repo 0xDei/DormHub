@@ -122,6 +122,16 @@ class LoginPage:
                 keyboard_type=ft.KeyboardType.PHONE,
                 input_filter=ft.InputFilter(regex_string=r'^[0-9+]*$', allow=True, replacement_string="")
             )
+            # Added Access Key Field
+            reg_access_key_tf = ft.TextField(
+                label="Landlord Access Key (Admin Email)", 
+                hint_text="Enter the Admin's email for access",
+                border_radius=10, 
+                bgcolor="#F3F3F5", 
+                border_width=0, 
+                prefix_icon=ft.Icon(ft.Icons.KEY_OUTLINED, color="#B8B8C1"), 
+                width=340
+            )
             reg_pass_tf = ft.TextField(label="Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK, color="#B8B8C1"), width=340)
             reg_confirm_tf = ft.TextField(label="Confirm Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK_CLOCK, color="#B8B8C1"), width=340)
 
@@ -129,7 +139,8 @@ class LoginPage:
                 [
                     ft.Text("Register New User", weight=ft.FontWeight.BOLD, size=24, color=ft.Colors.BLACK),
                     ft.Container(
-                        ft.Column([reg_user_tf, reg_email_tf, reg_phone_tf, reg_pass_tf, reg_confirm_tf], spacing=15),
+                        # ADDED reg_access_key_tf
+                        ft.Column([reg_user_tf, reg_email_tf, reg_phone_tf, reg_access_key_tf, reg_pass_tf, reg_confirm_tf], spacing=15),
                         margin=ft.margin.only(top=30)
                     ),
                     ft.Container(
@@ -141,7 +152,8 @@ class LoginPage:
                                     bgcolor="#FF6900", 
                                     style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10), text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD)), 
                                     color=ft.Colors.WHITE, 
-                                    on_click=lambda e: self.page.run_task(self.sign_up, reg_user_tf, reg_email_tf, reg_phone_tf, reg_pass_tf, reg_confirm_tf)
+                                    # ADDED reg_access_key_tf to sign_up call
+                                    on_click=lambda e: self.page.run_task(self.sign_up, reg_user_tf, reg_email_tf, reg_phone_tf, reg_access_key_tf, reg_pass_tf, reg_confirm_tf)
                                 ),
                                 ft.Row(
                                     [
@@ -280,19 +292,27 @@ class LoginPage:
             self.page.go("/active-resident")
             self.page.update()
 
-    async def sign_up(self, user_tf, email_tf, phone_tf, pass_tf, confirm_tf):
+    # UPDATED: Added access_key_tf parameter
+    async def sign_up(self, user_tf, email_tf, phone_tf, access_key_tf, pass_tf, confirm_tf):
         username = user_tf.value.strip()
         email = email_tf.value.strip()
         phone = phone_tf.value.strip()
+        access_key = access_key_tf.value.strip()
         password = pass_tf.value
         confirm_password = confirm_tf.value
 
         user_tf.error_text = ""
         email_tf.error_text = ""
         phone_tf.error_text = ""
+        access_key_tf.error_text = ""
         pass_tf.error_text = ""
         confirm_tf.error_text = ""
         has_error = False
+        
+        # --- 1. ACCESS KEY VALIDATION (New) ---
+        if access_key != self.admin_email:
+            access_key_tf.error_text = "Invalid Landlord Access Key"
+            has_error = True
 
         if len(username) < 3 or len(username) > 24:
             user_tf.error_text = "Username must be > 3 and < 24 chars"
@@ -336,6 +356,7 @@ class LoginPage:
         user_tf.value = ""
         email_tf.value = ""
         phone_tf.value = ""
+        access_key_tf.value = ""
         pass_tf.value = ""
         confirm_tf.value = ""
         
