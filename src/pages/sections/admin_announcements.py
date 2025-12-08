@@ -8,6 +8,7 @@ class AdminAnnouncements(Section):
     def __init__(self, admin_page):
         super().__init__()
         self.admin_page = admin_page
+        self.admin_id = admin_page.page.data.get_active_user() # Get current Admin ID
         self.reply_parent_id = None # State for tracking reply target
         
         header = ft.Row([
@@ -29,25 +30,43 @@ class AdminAnnouncements(Section):
 
     async def load_data(self):
         self.posts_list.controls.clear()
-        posts = await self.admin_page.page.data.get_announcements()
+        # MODIFIED: Filter posts to only those created by this admin
+        self.admin_id = self.admin_page.page.data.get_active_user()
+        posts = await self.admin_page.page.data.get_announcements(admin_user_id=self.admin_id)
         
         if not posts:
             self.posts_list.controls.append(ft.Container(ft.Text("No announcements yet.", color="grey"), alignment=ft.alignment.center, padding=50))
         else:
             for p in posts:
-                # p: id, title, content, date, likes
+                # p: id(0), admin_user_id(1), title(2), content(3), date(4), likes(5)
                 pid = p[0]
-                likes_count = len(json.loads(p[4]))
-                dt = datetime.fromtimestamp(int(p[3])).strftime("%b %d, %Y")
                 
-                # Fetch comment count
+                # FIX: Safely parse likes field (p[5]). Handle non-string/corrupt data (TypeError fix).
+                likes_raw = p[5]
+                likes = []
+                if isinstance(likes_raw, str):
+                    try:
+                        likes = json.loads(likes_raw)
+                    except json.JSONDecodeError:
+                        likes = []
+                
+                likes_count = len(likes)
+                
+                # FIX: Safely convert timestamp (p[4]). If invalid, defaults to 0 (Unix epoch start).
+                date_raw = p[4]
+                try:
+                    dt = datetime.fromtimestamp(int(date_raw)).strftime("%b %d, %Y")
+                except (ValueError, TypeError):
+                    dt = "N/A"
+                
+                # Use updated indices: title(2), content(3), date(4)
                 comments = await self.admin_page.page.data.get_comments(pid)
                 comment_count = len(comments)
                 
                 card = ft.Container(
                     ft.Column([
                         ft.Row([
-                            ft.Text(p[1], weight="bold", size=16, expand=True),
+                            ft.Text(p[2], weight="bold", size=16, expand=True), # title 
                             # Updated: Calls show_delete_confirmation instead of delete_post directly
                             ft.IconButton(
                                 ft.Icons.DELETE_OUTLINE, 
@@ -55,7 +74,7 @@ class AdminAnnouncements(Section):
                                 on_click=lambda e, pid=pid: self.admin_page.page.run_task(self.show_delete_confirmation, pid)
                             )
                         ]),
-                        ft.Text(p[2], size=13, color="#444444"),
+                        ft.Text(p[3], size=13, color="#444444"), # content
                         ft.Divider(),
                         ft.Row([
                             ft.Text(dt, size=11, color="grey"),
@@ -80,7 +99,8 @@ class AdminAnnouncements(Section):
         
         async def post(e):
             if not title.value or not content.value: return
-            await self.admin_page.page.data.create_announcement(title.value, content.value)
+            # MODIFIED: Pass admin_id when creating announcement
+            await self.admin_page.page.data.create_announcement(title.value, content.value, self.admin_id)
             self.admin_page.page.close(dlg)
             await self.load_data()
 

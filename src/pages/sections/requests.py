@@ -90,14 +90,33 @@ class Requests(Section):
             requests_data.sort(key=lambda x: int(x.get("date_created", 0)), reverse=True)
             
             for req in requests_data:
-                # Color coding
-                status_color = "orange"
-                if req["status"] == "in-progress": status_color = "blue"
-                elif req["status"] == "completed": status_color = "green"
                 
+                # --- START STATUS BADGE LOGIC ---
+                # Determine colors for Status Badge and leading icon
+                if req["status"] == "in-progress":
+                    status_text = "IN-PROGRESS"
+                    st_color = "#4D84FC" # Blue
+                    st_bgcolor = "#DBEAFE"
+                    icon_color_bg = "blue"
+                elif req["status"] == "completed":
+                    status_text = "COMPLETED"
+                    st_color = "#00cc0a" # Green
+                    st_bgcolor = "#b3ffb6"
+                    icon_color_bg = "green"
+                else: # pending
+                    status_text = "PENDING"
+                    st_color = "#C28239" # Orange/Brown
+                    st_bgcolor = "#FEF9C3"
+                    icon_color_bg = "orange"
+                
+                status_badge = create_remark(status_text, st_color, st_bgcolor)
+
+                # Color coding for Urgency Badge
                 urgency_color = "grey"
                 if req["urgency"] == "medium": urgency_color = "orange"
                 elif req["urgency"] == "high": urgency_color = "red"
+                urgency_badge = create_remark(req["urgency"].upper(), urgency_color, "#f0f0f0")
+                # --- END STATUS BADGE LOGIC ---
 
                 # Date formatting
                 try:
@@ -110,7 +129,8 @@ class Requests(Section):
                     ft.Row([
                         ft.Container(
                             ft.Icon(ft.Icons.BUILD, color="white", size=20),
-                            bgcolor=status_color,
+                            # Use the determined icon color background
+                            bgcolor=icon_color_bg, 
                             border_radius=8,
                             padding=8
                         ),
@@ -118,8 +138,10 @@ class Requests(Section):
                             ft.Text(req["issue"].get("title", "Issue"), weight="bold", size=14),
                             ft.Text(req["issue"].get("desc", ""), size=12, color="grey", overflow=ft.TextOverflow.ELLIPSIS),
                         ], spacing=2, expand=True),
+                        # Display both Status and Urgency badges
                         ft.Column([
-                            create_remark(req["urgency"].upper(), urgency_color, "#f0f0f0"),
+                            status_badge,
+                            urgency_badge,
                             ft.Text(date_str, size=10, color="grey")
                         ], horizontal_alignment="end", spacing=2)
                     ], alignment="spaceBetween"),
@@ -175,7 +197,10 @@ class Requests(Section):
                 self.resident_page.id
             )
             self.resident_page.page.close(dlg)
+            
+            # --- FIX: Re-instantiate Requests(self.resident_page) to force reload ---
             self.resident_page.page.run_task(self.resident_page.show_section, Requests(self.resident_page))
+            # ----------------------------------------------------------------------
 
         dlg = ft.AlertDialog(
             title=ft.Text("New Request"),
