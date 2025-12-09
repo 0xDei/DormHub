@@ -5,9 +5,9 @@ The application root page prompts the user to select their portal
 
 **Admin Dashboard:** For landlords to manage the property, residents, and finances. Resident **Dashboard:** For tenants to view their room, pay rent, and submit requests.
 
-![src\assets\main.png]
+![Root Page](src\assets\main.png)
 
-## **As Admin **
+## **As Admin**
 
 In the root page, select **Continue as Admin**
 
