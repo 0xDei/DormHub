@@ -50,7 +50,6 @@ class Payment(Section):
         if self.resident_page.data["room_id"] != "N/A":
             unpaid_count = len(self.resident_page.data.get("unpaid_dues", []))
             
-            # Handle due date safely
             try:
                 if unpaid_count == 0:
                     if self.resident_page.data["due_date"] != "N/A":
@@ -99,7 +98,6 @@ class Payment(Section):
                             spacing=0,
                             alignment=ft.MainAxisAlignment.CENTER
                         ),
-                        # Icon placeholder logic simplified for brevity as per your previous files
                         ft.Container(
                             ft.Icon(ft.Icons.ACCESS_TIME_FILLED_ROUNDED, size=32, color="#feae33"), # Default icon
                             bgcolor="#fff5e6",
@@ -118,7 +116,6 @@ class Payment(Section):
                 expand=True
             )
 
-            # Handle next due date safely
             try:
                 if self.resident_page.data["due_date"] != "N/A":
                     next_due_date = datetime.fromtimestamp(int(self.resident_page.data["due_date"]))
@@ -425,21 +422,14 @@ class Payment(Section):
                         new_unpaid.append(due)
                 data["unpaid_dues"] = new_unpaid
 
-            # UPDATE DUE DATE LOGIC
-            # If monthly_rent is set and payment covers it, advance due date
             if monthly_rent > 0:
                 months_paid = amount // monthly_rent
-                # Even if they pay partial, if it's accumulated to clear a month, logic is complex.
-                # Here we assume straightforward: if they pay equivalent of X months rent, we advance X months.
-                # However, usually payment is against current due.
                 
-                # Simple logic: If current due date exists, and they pay at least 1 month rent
                 if months_paid >= 1 and data.get("due_date") != "N/A":
                     try:
                         current_due_ts = int(data["due_date"])
                         current_due_dt = datetime.fromtimestamp(current_due_ts)
                         
-                        # Add months based on payment amount
                         new_due_dt = self.add_months(current_due_dt, months_paid)
                         
                         data["due_date"] = str(int(new_due_dt.timestamp()))
@@ -460,7 +450,6 @@ class Payment(Section):
             self.resident_page.page.close(popup)
             create_banner(self.resident_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN), "Payment added successfully!", ft.Colors.GREEN)
             
-            # Refresh section
             self.resident_page.page.run_task(self.resident_page.show_section, Payment(self.resident_page))
 
         except Exception as e:

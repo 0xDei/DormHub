@@ -12,9 +12,9 @@ class AdminPayment(Section):
         super().__init__()
 
         self.admin_page = admin_page
-        self.all_payment_records = [] # Store all processed data for fast local filtering
+        self.all_payment_records = [] 
 
-        # --- Search & Filter Controls ---
+        # Search & Filter Controls
         self.search_field = ft.TextField(
             hint_text="Search resident...",
             prefix_icon=ft.Icons.SEARCH,
@@ -150,7 +150,6 @@ class AdminPayment(Section):
             expand=True
         )
 
-        # Load data: This is the line that automatically triggers data display.
         self.admin_page.page.run_task(self.load_data)
 
     def on_search_change(self, e):
@@ -161,7 +160,6 @@ class AdminPayment(Section):
 
     async def load_data(self):
         try:
-            # 1. Fetch Data (Initial fetch)
             all_users = await self.admin_page.page.data.get_all_users()
             self.all_payment_records = []
             
@@ -174,11 +172,9 @@ class AdminPayment(Section):
             
             current_admin_id = self.admin_page.page.data.get_active_user() # GET ADMIN ID
             
-            # Fetch all rooms to create a monthly_rent lookup table
             all_rooms = await self.admin_page.page.data.get_all_rooms(admin_user_id=current_admin_id)
             room_rent_lookup = {str(r[0]): r[5] for r in all_rooms} 
             
-            # --- PHASE 1: CHECK FOR AND CREATE NEW OVERDUE DUES (DB UPDATE) ---
             did_update_due = False
             for user in all_users: 
                 try:
@@ -201,38 +197,29 @@ class AdminPayment(Section):
                         try:
                             due_ts = int(due_date_str)
                             
-                            # Condition: Due date is passed (due_ts < current_ts) AND no existing unpaid dues
                             if due_ts < current_ts and user_outstanding == 0:
                                 
-                                # 1. Add new unpaid due for the passed month
                                 unpaid_dues.append({"date": due_ts, "amount": monthly_rent, "remark": "overdue"})
                                 user_data["unpaid_dues"] = unpaid_dues
                                 
-                                # 2. Advance next due date by 1 month 
                                 current_due_dt = datetime.fromtimestamp(due_ts)
                                 new_due_dt = self.add_months(current_due_dt, 1)
                                 user_data["due_date"] = str(int(new_due_dt.timestamp()))
                                 
-                                # 3. Commit update to DB
                                 await self.admin_page.page.data.update_user(user[0], user[1], user[2], user[3], user_data)
                                 
                                 did_update_due = True
-                                # Stop and restart the loading process to get fresh data
                                 break 
                                 
                         except (ValueError, TypeError): 
-                            pass # Corrupted date, skip to next user
+                            pass 
                             
                 except:
                     continue
             
-            # If a DB update occurred, recursively call load_data() to re-read fresh data.
             if did_update_due:
                 return await self.load_data()
             
-            # --- PHASE 2: CALCULATE STATS AND DISPLAY (Now guaranteed fresh data) ---
-            
-            # Re-filter users to get the finalized list after any potential updates
             linked_residents = []
             for user in all_users:
                 try:
@@ -253,25 +240,21 @@ class AdminPayment(Section):
                     monthly_rent = room_rent_lookup.get(room_id, 0)
                     if monthly_rent is None: monthly_rent = 0 
 
-                    # 1. Calculate Outstanding (Now includes any newly created dues)
                     unpaid_dues = user_data.get("unpaid_dues", [])
                     user_outstanding = sum(item.get('amount', 0) for item in unpaid_dues)
                     total_outstanding_amount += user_outstanding
 
-                    # 2. Calculate Monthly Revenue (from history)
                     payment_history = user_data.get("payment_history", [])
                     for pay in payment_history:
                         if pay.get('date', 0) >= start_of_month:
                             total_collected_month += pay.get('amount', 0)
 
-                    # 3. Calculate Next Due Date
                     due_date_str = user_data.get("due_date", "N/A")
                     days_remaining = 9999
                     due_date_display = "Not Set"
                     
                     if due_date_str != "N/A":
                         try:
-                            # Safely convert due_date_str to int
                             due_ts = int(due_date_str)
                             dt = datetime.fromtimestamp(due_ts)
                             due_date_display = dt.strftime("%b %d, %Y")
@@ -356,10 +339,9 @@ class AdminPayment(Section):
             days = item['days_remaining']
             outstanding = item['outstanding']
             
-            # --- Styling Logic (No badges, just colors/text) ---
             if outstanding > 0:
                 status_text = "Overdue Balance"
-                status_color = "#D66875" # Red
+                status_color = "#D66875" 
                 icon_bg = "#D66875"
                 card_border_color = "#ffc2c2"
             else:
@@ -456,7 +438,6 @@ class AdminPayment(Section):
     async def show_history_dialog(self, record):
         history_items = []
         
-        # FIX: Ensure sort key access is safe
         sorted_history = sorted(record['payment_history'], key=lambda x: x.get('date', 0), reverse=True)
         total_paid_lifetime = sum(p.get('amount', 0) for p in sorted_history)
 
@@ -569,12 +550,10 @@ class AdminPayment(Section):
             payment_history = data.get("payment_history", [])
             unpaid_dues = data.get("unpaid_dues", [])
             
-            # FIX: Get monthly_rent from room data by fetching it live
             room_id = data.get("room_id")
             monthly_rent = 0
             if room_id != "N/A":
                 room_res = await self.admin_page.page.data.get_room_by_id(room_id)
-                # room_res tuple: id(0), admin_user_id(1), amenities(2), residents(3), bed_count(4), monthly_rent(5), ...
                 if room_res and room_res[0][5] is not None:
                     try:
                         monthly_rent = int(room_res[0][5])

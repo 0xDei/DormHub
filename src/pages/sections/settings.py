@@ -127,15 +127,12 @@ class Settings(Section):
                     self.controller.data
                 )
                 
-                # 1. Update Controller State
                 self.controller.username = user_tf.value
                 self.controller.email = email_tf.value
                 
-                # 2. Update Settings UI immediately
                 self.profile_tile.subtitle.value = f"Logged in as {self.controller.username}"
                 self.profile_tile.update()
 
-                # 3. Update Navbar immediately
                 if hasattr(self.controller, 'navbar'):
                     self.controller.navbar.update_user_display()
                 

@@ -9,17 +9,14 @@ from utils.element_factory import *
 class LoginPage:
     def __init__(self, page: ft.Page, type=1):
         self.page = page
-        self.type = type  # 0 = Admin, 1 = Resident
+        self.type = type  
 
-        # REMOVED: Hardcoded Admin credentials are now checked against DB.
-        
-        # State for UI controls
         self.card_container = None
         self.login_view = None
         self.register_view = None
         self.is_registering = False
         
-        # New admin specific views
+        # admin specific views
         if self.type == 0:
             self.admin_login_view = None
             self.admin_register_view = None
@@ -27,9 +24,8 @@ class LoginPage:
 
 
     async def show(self):
-        # --- 1. BUILD ADMIN LOGIN / REGISTER VIEWS ---
         if self.type == 0:
-            # 1. Admin Login Form
+            # Admin Login Form
             admin_email_tf = ft.TextField(
                 label="Admin Email", 
                 hint_text="Enter admin email", 
@@ -96,7 +92,7 @@ class LoginPage:
                 alignment=ft.MainAxisAlignment.CENTER,
             )
 
-            # 2. Admin Register Form
+            # Admin Register Form
             reg_admin_user_tf = ft.TextField(label="Username", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.PERSON, color="#B8B8C1"), width=340)
             reg_admin_email_tf = ft.TextField(label="Admin Email", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.EMAIL, color="#B8B8C1"), width=340)
             reg_admin_pass_tf = ft.TextField(label="Password", border_radius=10, bgcolor="#F3F3F5", border_width=0, password=True, can_reveal_password=True, prefix_icon=ft.Icon(ft.Icons.LOCK, color="#B8B8C1"), width=340)
@@ -141,10 +137,8 @@ class LoginPage:
                 alignment=ft.MainAxisAlignment.CENTER,
             )
 
-            # Set initial view for Admin
             current_view = self.admin_login_view
 
-        # --- 2. BUILD RESIDENT LOGIN / REGISTER VIEWS (Existing Logic) ---
         else: 
             login_field = ft.TextField(
                 label="Username", 
@@ -215,7 +209,7 @@ class LoginPage:
                 alignment=ft.MainAxisAlignment.CENTER,
             )
 
-            # --- Resident Register Form ---
+            # Resident Register Form
             reg_user_tf = ft.TextField(label="Username", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.PERSON, color="#B8B8C1"), width=340)
             reg_email_tf = ft.TextField(label="Email", border_radius=10, bgcolor="#F3F3F5", border_width=0, prefix_icon=ft.Icon(ft.Icons.EMAIL, color="#B8B8C1"), width=340)
             reg_phone_tf = ft.TextField(
@@ -228,7 +222,6 @@ class LoginPage:
                 keyboard_type=ft.KeyboardType.PHONE,
                 input_filter=ft.InputFilter(regex_string=r'^[0-9+]*$', allow=True, replacement_string="")
             )
-            # UPDATED: Access Key Field label
             reg_access_key_tf = ft.TextField(
                 label="Landlord Access Key (6-Digits)", 
                 hint_text="Enter the 6-digit key from your Admin",
@@ -282,7 +275,7 @@ class LoginPage:
 
             current_view = self.login_view
             
-        # --- 3. MAIN CARD CONTAINER ---
+        # MAIN CARD CONTAINER
         self.card_container = ft.Container(
             content=current_view,
             padding=ft.padding.only(top=35, left=20, right=20, bottom=45),
@@ -297,7 +290,6 @@ class LoginPage:
                 )
             ],
             width=370,
-            # Animation properties for the flip
             scale=ft.Scale(scale=1),
             animate_scale=ft.Animation(300, ft.AnimationCurve.EASE_IN_OUT),
         )
@@ -330,14 +322,11 @@ class LoginPage:
 
 
     async def flip_card(self, e):
-        """Simulates a flip for resident form toggle."""
-        # 1. Shrink width to 0 (Turn to edge)
         self.card_container.scale = ft.Scale(scale_x=0, scale_y=1)
         self.card_container.update()
         
         await asyncio.sleep(0.3) # Wait for animation to finish
         
-        # 2. Swap Content
         if self.is_registering:
             self.card_container.content = self.login_view
             self.is_registering = False
@@ -345,11 +334,9 @@ class LoginPage:
             self.card_container.content = self.register_view
             self.is_registering = True
         
-        # 3. Expand width back to 1 (Turn to face)
         self.card_container.scale = ft.Scale(scale_x=1, scale_y=1)
         self.card_container.update()
 
-    # NEW METHOD: For Admin Login/Register Toggle
     async def flip_admin_card(self):
         """Simulates a flip for the admin panel toggle."""
         self.card_container.scale = ft.Scale(scale_x=0, scale_y=1)
@@ -367,8 +354,6 @@ class LoginPage:
         self.card_container.scale = ft.Scale(scale_x=1, scale_y=1)
         self.card_container.update()
 
-
-    # NEW ADMIN LOGIN: Check against DB for role="admin"
     async def check_admin_login(self, emailTF, passwordTF):
         email = emailTF.value.strip()
         password = passwordTF.value
@@ -384,7 +369,6 @@ class LoginPage:
             self.page.update()
             return
 
-        # Fetch user by email and check for 'admin' role
         user_data = await self.page.data.get_user_by_email_and_role(email, "admin")
 
         if len(user_data) == 0:
@@ -404,7 +388,6 @@ class LoginPage:
             self.page.update()
             return
 
-        # Login successful
         emailTF.error_text = ""
         passwordTF.error_text = ""
         self.page.data.set_active_user(user_data[0][0])
@@ -412,7 +395,6 @@ class LoginPage:
         self.page.update()
         return
 
-    # NEW ADMIN REGISTRATION: Create user with role="admin"
     async def sign_up_admin(self, user_tf, email_tf, pass_tf, confirm_tf):
         username = user_tf.value.strip()
         email = email_tf.value.strip()
@@ -457,21 +439,17 @@ class LoginPage:
             self.page.update()
             return
 
-        # Create user with role="admin" - Key is generated inside create_user
         await self.page.data.create_user(username, email, password, role="admin")
         
-        # Reset fields and flip back
         user_tf.value = ""
         email_tf.value = ""
         pass_tf.value = ""
         confirm_tf.value = ""
         
-        await self.flip_admin_card() # Go back to login
+        await self.flip_admin_card() 
         create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.PERSON_ADD_ALT_1_OUTLINED, color=ft.Colors.GREEN), f"Admin account created! Please log in as {username}", ft.Colors.GREEN_500)
         self.page.update()
 
-
-    # EXISTING METHOD: Resident Login Check
     async def check_login(self, loginTF, passwordTF):
         login_val = loginTF.value.strip()
         password = passwordTF.value
@@ -481,11 +459,9 @@ class LoginPage:
             self.page.update()
             return
 
-        # --- RESIDENT LOGIN (USERNAME) ---
         if self.type == 1:
             user_data = await self.page.data.get_user_by_name(login_val)
             
-            # Check if user exists, password matches, AND user role is NOT admin (prevent admin login via resident path)
             is_admin = False
             if len(user_data) > 0:
                 try:
@@ -508,7 +484,6 @@ class LoginPage:
             self.page.go("/active-resident")
             self.page.update()
 
-    # EXISTING METHOD: Resident Sign Up
     async def sign_up(self, user_tf, email_tf, phone_tf, access_key_tf, pass_tf, confirm_tf):
         username = user_tf.value.strip()
         email = email_tf.value.strip()
@@ -525,7 +500,6 @@ class LoginPage:
         confirm_tf.error_text = ""
         has_error = False
         
-        # --- 1. ACCESS KEY VALIDATION (Updated for 6-digit key) ---
         admin_id = await self.page.data.get_admin_id_by_access_key(access_key)
         
         if admin_id is None:
@@ -567,10 +541,8 @@ class LoginPage:
             self.page.update()
             return
 
-        # Create user with role="resident" and link to the validated admin_id
         await self.page.data.create_user(username, email, password, phone, linked_admin_id=admin_id)
         
-        # Reset fields and flip back
         user_tf.value = ""
         email_tf.value = ""
         phone_tf.value = ""
@@ -578,7 +550,7 @@ class LoginPage:
         pass_tf.value = ""
         confirm_tf.value = ""
         
-        await self.flip_card(None) # Go back to login
+        await self.flip_card(None) 
         create_banner(self.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.PERSON_ADD_ALT_1_OUTLINED, color=ft.Colors.GREEN), f"Account created! Please log in as {username}", ft.Colors.GREEN_500)
         self.page.update()
 

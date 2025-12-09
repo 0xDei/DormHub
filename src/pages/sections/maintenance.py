@@ -145,9 +145,8 @@ class Maintenance(Section):
             
             current_admin_id = self.admin_page.page.data.get_active_user() # GET ADMIN ID
             
-            # 1. Determine which user IDs are linked to the current Admin
-            linked_user_ids = {current_admin_id} # Always include the admin itself (if they post something)
-            linked_user_map = {} # Map ID -> Username
+            linked_user_ids = {current_admin_id}
+            linked_user_map = {}
             
             for user in all_users:
                 user_id = user[0]
@@ -163,7 +162,6 @@ class Maintenance(Section):
                 except:
                     continue
             
-            # 2. Filter Requests: only process requests made by linked users
             requests = [req for req in all_requests if req[5] in linked_user_ids]
             
             self.all_requests = []
@@ -173,7 +171,6 @@ class Maintenance(Section):
 
             if requests:
                 for req in requests:
-                    # req: (id, room_id, issue, current_status, urgency, user_id, date_created, date_updated)
                     try:
                         issue_str = req[2]
                         issue = json.loads(issue_str) if issue_str else {}
@@ -192,8 +189,8 @@ class Maintenance(Section):
                             "desc": issue.get("desc", "No Description"),
                             "status": status,
                             "urgency": urgency,
-                            "username": linked_user_map.get(req[5], "Unknown User"), # Use linked map
-                            "date_created": req[6] # Raw string
+                            "username": linked_user_map.get(req[5], "Unknown User"), 
+                            "date_created": req[6]
                         })
                     except Exception as e:
                         print(f"Error parsing request {req[0]}: {e}")
@@ -217,7 +214,6 @@ class Maintenance(Section):
         
         # Sort by date (newest first)
         try:
-            # FIX: Robust timestamp conversion before sorting
             def get_timestamp_safe(date_str):
                 try:
                     return int(date_str)
@@ -266,7 +262,6 @@ class Maintenance(Section):
 
                 # Date formatting
                 try:
-                    # FIX: Robust timestamp conversion
                     dt = datetime.fromtimestamp(int(r["date_created"]))
                     date_str = dt.strftime("%b %d, %Y")
                 except:
@@ -281,7 +276,7 @@ class Maintenance(Section):
                         ft.dropdown.Option("completed", "Completed"),
                     ],
                     text_size=12,
-                    dense=True, # Used dense instead of height for compact look
+                    dense=True, 
                     width=130,
                     content_padding=10,
                     border_radius=8,
@@ -336,14 +331,10 @@ class Maintenance(Section):
             await self.page.data.update_request_status(request_id, new_status)
             create_banner(self.page, ft.Colors.BLUE_100, ft.Icon(ft.Icons.CHECK, color=ft.Colors.BLUE), "Status updated!", ft.Colors.BLUE)
             
-            # --- START BADGE UPDATE LOGIC ---
-            # 1. Update AdminPage data (recalculates maintenance_count)
             await self.admin_page.update_data()
             
-            # 2. Update the parent view (to refresh the navbar with the new badge count)
             self.admin_page.view.update()
-            # --- END BADGE UPDATE LOGIC ---
             
-            await self.load_data() # Refresh the list in the Maintenance section
+            await self.load_data() 
         except Exception as e:
             print(f"Error updating status: {e}")

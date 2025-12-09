@@ -14,9 +14,8 @@ class Overview(Section):
         
         self.padding = ft.padding.all(10)
         self.admin_page = admin_page
-        self.running = False # Flag to control the update loop
+        self.running = False 
 
-        # --- PERSISTENT CONTROLS (FIX) ---
         self.activity_items_column = ft.Column(spacing=10) # For Recent Activity
         self.maintenance_items_column = ft.Column(spacing=10) # For Urgent Maintenance
         
@@ -30,9 +29,7 @@ class Overview(Section):
             self.maintenance_items_column,
             col={"xs": 12, "md": 6}
         )
-        # ---------------------------------
-
-        # --- UI Containers (Responsive) ---
+       
         self.info_cards_container = ft.ResponsiveRow(
             spacing=10,
             run_spacing=10, 
@@ -49,19 +46,15 @@ class Overview(Section):
             run_spacing=20,
         )
 
-        # --- MODIFICATION START ---
-        # Get the username from the injected admin_page instance
         admin_username = self.admin_page.username
         
         header = ft.Row(
             [
-                # Updated greeting string
                 ft.Text(f"Welcome, Admin {admin_username}!", color="#FF6900", size=24, weight=ft.FontWeight.BOLD),
                 ft.Text("👋", size=24)
             ],
             spacing=5
         )
-        # --- MODIFICATION END ---
 
         self.content = ft.Container(
             ft.Column(
@@ -103,7 +96,6 @@ class Overview(Section):
         while self.running:
             await self.load_overview_data()
             try:
-                # Wait for 5 seconds before next update
                 await asyncio.sleep(5)
             except Exception:
                 break
@@ -113,16 +105,14 @@ class Overview(Section):
         if not self.running: return
 
         try:
-            # 1. Fetch Data
             all_rooms_data = await self.admin_page.page.data.get_all_rooms()
             requests_data = await self.admin_page.page.data.get_all_requests()
             all_users_data = await self.admin_page.page.data.get_all_users()
             
             current_admin_id = self.admin_page.page.data.get_active_user()
             
-            # --- FIX 1: Filter users and rooms by linked_admin_id ---
             users_data = []
-            admin_resident_map = {} # Map user_id to username
+            admin_resident_map = {} 
             
             for user in all_users_data:
                 user_id = user[0]
@@ -138,18 +128,15 @@ class Overview(Section):
                 
                 if is_current_admin or is_linked_resident:
                     users_data.append(user)
-                    admin_resident_map[user_id] = user[1] # Store username
+                    admin_resident_map[user_id] = user[1]
 
-            # Filter rooms to only include those owned by this admin (admin_user_id is at index 1)
             rooms_data = [r for r in all_rooms_data if r[1] == current_admin_id]
 
-            # Helper to parse room rent (using the filtered rooms_data)
-            room_rents = {str(r[0]): r[5] for r in rooms_data} # monthly_rent is at index 5
+            room_rents = {str(r[0]): r[5] for r in rooms_data} 
 
-            # 2. Process Stats
             total_beds = 0
             for room in rooms_data:
-                total_beds += room[4] # bed_count is at index 4
+                total_beds += room[4] 
 
             residents_count = 0
             projected_income = 0
@@ -158,7 +145,6 @@ class Overview(Section):
             now = datetime.now()
             start_of_month = datetime(now.year, now.month, 1).timestamp()
             
-            # Cutoff for "Recent" activities (30 days ago)
             thirty_days_ago_ts = (now - timedelta(days=30)).timestamp() 
 
             activities = []
@@ -167,7 +153,6 @@ class Overview(Section):
                 user_id = user[0]
                 user_name = user[1]
 
-                # Skip the admin user when counting residents/income
                 if user_id == current_admin_id and json.loads(user[4]).get("role") == "admin":
                     continue
                     
@@ -175,12 +160,10 @@ class Overview(Section):
                     u_data = json.loads(user[4])
                     room_id = str(u_data.get("room_id", "N/A"))
                     
-                    # These stats only count linked residents
                     if room_id != "N/A":
                         residents_count += 1
                         projected_income += room_rents.get(room_id, 0)
                     
-                    # Process Payments (Activity Source 1) - ONLY for linked residents
                     for pay in u_data.get("payment_history", []):
                         p_date = pay.get("date", 0)
                         p_amount = pay.get("amount", 0)
@@ -200,23 +183,20 @@ class Overview(Section):
                 except Exception as ex:
                     print(f"Error parsing user {user[0]}: {ex}")
 
-            # Process Requests (Activity Source 3)
             requests_count = 0
             urgent_count = 0
             urgent_maintenance_list = []
             
-            # List of user IDs of linked residents with assigned rooms
             admin_resident_room_user_ids = {u[0] for u in users_data if json.loads(u[4]).get("role") == "resident" and json.loads(u[4]).get("room_id") != "N/A"}
             
             for req in requests_data:
-                # Filter request by user ID belonging to one of this admin's residents
                 req_user_id = req[5]
                 if req_user_id not in admin_resident_room_user_ids:
                     continue
                     
                 status = req[3]
                 urgency = req[4]
-                date_created = req[6] # Raw string from DB
+                date_created = req[6] 
                 
                 if status != "completed":
                     requests_count += 1
@@ -234,12 +214,11 @@ class Overview(Section):
                 
                 request_username = admin_resident_map.get(req_user_id, "Unknown Resident")
                 
-                # FIX: Safely parse date_created
                 date_raw = req[6]
                 try:
                     timestamp = int(date_raw)
                 except (ValueError, TypeError):
-                    timestamp = 0 # Default to 0 if invalid
+                    timestamp = 0 
                     
                 activities.append({
                     "type": "request",
@@ -250,14 +229,9 @@ class Overview(Section):
                     "color": ft.Colors.ORANGE_700
                 })
 
-            # Process Announcements (Activity Source 4)
-            # Fetch announcements posted by this Admin
             admin_announcements = await self.admin_page.page.data.get_announcements(admin_user_id=current_admin_id)
 
             for ann in admin_announcements:
-                # p: id(0), admin_user_id(1), title(2), content(3), date(4), likes(5) 
-                
-                # FIX: Safely parse date (ann[4])
                 date_raw = ann[4]
                 try:
                     timestamp = int(date_raw)
@@ -267,7 +241,7 @@ class Overview(Section):
                 activities.append({
                     "type": "announcement",
                     "title": f"New Announcement Posted",
-                    "desc": ann[2], # Title is at index 2
+                    "desc": ann[2], 
                     "timestamp": timestamp,
                     "icon": ft.Icons.CAMPAIGN_OUTLINED,
                     "color": ft.Colors.RED_ACCENT_700
@@ -275,10 +249,8 @@ class Overview(Section):
 
 
             activities.sort(key=lambda x: x["timestamp"], reverse=True)
-            recent_activities = activities[:5] # Get top 5 most relevant
+            recent_activities = activities[:5]
 
-            # 3. Build UI Elements
-            # Calculate occupancy based only on linked residents/owned rooms
             bed_count_safe = max(total_beds, 1) 
             percent = (residents_count / bed_count_safe) * 100
 
@@ -294,8 +266,6 @@ class Overview(Section):
 
             # --- Charts ---
             
-            # 1. Occupancy Trend (Line Chart)
-            # Filter resident_move_ins to only include linked residents
             resident_move_ins = []
             for user in users_data:
                 try:
@@ -407,7 +377,6 @@ class Overview(Section):
                 activity_display_items.append(ft.Text("No recent activity", color=ft.Colors.GREY_400))
             else:
                 for act in recent_activities:
-                    # FIX: Explicitly convert to int to prevent floating point issues in subtraction
                     now_ts = int(datetime.now().timestamp())
                     event_ts = int(act["timestamp"])
                     diff = now_ts - event_ts
@@ -431,7 +400,6 @@ class Overview(Section):
                     # Refactored: Call helper function for creating the activity item UI
                     activity_display_items.append(self.create_activity_item(act, time_str))
 
-            # FIX: Only update the controls of the persistent column
             self.activity_items_column.controls = activity_display_items
             
             maintenance_display_items = []
@@ -467,7 +435,6 @@ class Overview(Section):
                         )
                     )
 
-            # FIX: Only update the controls of the persistent column
             self.maintenance_items_column.controls = maintenance_display_items
 
             if self.running:
@@ -504,9 +471,6 @@ class Overview(Section):
             ),
             padding=ft.padding.only(bottom=5)
         )
-    # ----------------------------------------
-
-    # --- Helper Methods for UI Styling (Logic remains the same) ---
 
     def create_stat_card(self, title, value, subtext, icon, bg_color, icon_color, col=None):
         icon_size = icon.size if icon.size is not None else 24

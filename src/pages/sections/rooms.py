@@ -33,16 +33,11 @@ class Rooms(Section):
     async def load_rooms(self):
         try:
             self.rooms_list.controls.clear()
-            
-            # --- START MODIFICATION ---
-            # 1. Get the current Admin ID
+        
             current_admin_id = self.admin_page.page.data.get_active_user()
 
-            # 2. Fetch only Rooms owned by this Admin
             rooms_data = await self.admin_page.page.data.get_all_rooms(admin_user_id=current_admin_id)
-            # --- END MODIFICATION ---
-
-            # Fetch users to calculate accurate status
+    
             users_data = await self.admin_page.page.data.get_all_users()
             
             # Count residents per room
@@ -74,7 +69,6 @@ class Rooms(Section):
                     bed_count = r[4] # Index 4 is bed_count
                     db_status = r[6] # Index 6 is current_status
                     
-                    # Logic: Keep 'maintenance', otherwise calc based on occupancy
                     if db_status == "maintenance":
                         status = "maintenance"
                     elif current_residents >= bed_count:
@@ -85,10 +79,10 @@ class Rooms(Section):
                     room = {
                         'id': r[0], 
                         'bed_count': bed_count, 
-                        'monthly_rent': r[5], # Index 5 is monthly_rent
+                        'monthly_rent': r[5], 
                         'status': status, 
-                        'thumbnail': r[7], # Index 7 is thumbnail
-                        'current_residents': current_residents # Store for display
+                        'thumbnail': r[7], 
+                        'current_residents': current_residents 
                     }
                     self.rooms_list.controls.append(self.create_room_card(room))
             
@@ -103,7 +97,6 @@ class Rooms(Section):
         thumb = f"assets/room_thumbnails/{room['thumbnail']}"
         if not os.path.exists(thumb): thumb = "assets/placeholder.jpg"
         
-        # Display "X/Y Beds" instead of just "Y Beds"
         occupancy_text = f"{room['current_residents']}/{room['bed_count']} Beds"
 
         return ft.Card(
@@ -144,8 +137,6 @@ class Rooms(Section):
 
         bed_count = ft.Dropdown(label="Bed Count", options=[ft.DropdownOption(i, str(i)) for i in range(1, 11)], value=room['bed_count'], expand=True)
         
-        # Admin can force maintenance, but available/occupied are mostly auto-calculated. 
-        # Providing option to set manual status override if needed.
         status = ft.Dropdown(label="Status Override", options=[ft.DropdownOption("available"), ft.DropdownOption("occupied"), ft.DropdownOption("maintenance")], value=room['status'], expand=True)
 
         monthly_rent = ft.TextField(label="Monthly Rent", prefix_text="₱ ", value=str(room['monthly_rent']), keyboard_type="number", input_filter=ft.InputFilter(r'^[0-9]*$'), expand=True)

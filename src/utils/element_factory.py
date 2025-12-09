@@ -56,7 +56,6 @@ def get_navbar_icon(isAdmin):
     )
 
 def create_info_card(name, content, icon, icon_placement, bgcolor, width, height, col=None):
-    # FIX: Handle cases where icon.size is None by defaulting to 24
     icon_size = icon.size if icon.size is not None else 24
 
     card_name = ft.Column([ft.Text(name, size=12, color=ft.Colors.GREY_600), *content], spacing=0, expand=True)
@@ -65,7 +64,6 @@ def create_info_card(name, content, icon, icon_placement, bgcolor, width, height
     row_content = [card_icon, card_name]
     if icon_placement == "right": row_content = [card_name, card_icon]    
 
-    # If col is provided, ignore fixed width to allow responsive sizing
     container_width = width if col is None else None
 
     return ft.Container(
@@ -76,7 +74,7 @@ def create_info_card(name, content, icon, icon_placement, bgcolor, width, height
         height=height,
         bgcolor=ft.Colors.WHITE,
         border=ft.border.all(2, "#FEF3C6"),
-        col=col # Apply responsive column setting
+        col=col 
     )
 
 def create_remark(remark, color, bgcolor):

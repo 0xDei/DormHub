@@ -25,7 +25,6 @@ class MyRoom(Section):
         )
         
         if self.resident_page.data["room_id"] != "N/A":
-            # Handle due date safely
             try:
                 if self.resident_page.data["due_date"] != "N/A":
                     date = datetime.fromtimestamp(int(self.resident_page.data["due_date"]))
@@ -80,7 +79,6 @@ class MyRoom(Section):
             else: 
                 roommates_text = ft.Text(roommates[0])
 
-            # Handle move-in date safely
             try:
                 if self.resident_page.data["move_in_date"] != "N/A":
                     date = datetime.fromtimestamp(int(self.resident_page.data["move_in_date"]))
@@ -90,7 +88,6 @@ class MyRoom(Section):
             except:
                 move_in_date = "Not Set"
 
-            # Determine image source
             thumbnail = self.resident_page.data.get("thumbnail", "placeholder.jpg")
             image_src = f"../assets/room_thumbnails/{thumbnail}"
 
@@ -99,7 +96,6 @@ class MyRoom(Section):
                     [
                         ft.Text("Your Room", color="#E78B28", size=14, weight=ft.FontWeight.W_500),
                         ft.ListView([
-                            # --- MODIFICATION START ---
                             ft.GestureDetector(
                                 content=ft.Image(
                                     src=image_src, 
@@ -108,10 +104,8 @@ class MyRoom(Section):
                                     fit=ft.ImageFit.COVER, 
                                     border_radius=10
                                 ),
-                                # Run task to open the dialog when the image is tapped
                                 on_tap=lambda e, src=image_src: self.resident_page.page.run_task(self.show_full_image_dialog, src)
                             )
-                            # --- MODIFICATION END ---
                         ], height=300, expand=True),
                         ft.Divider(2, color="#FEF3C6"),
                         ft.Row(
@@ -241,22 +235,20 @@ class MyRoom(Section):
             expand=True
         )
 
-    # --- NEW FUNCTION TO DISPLAY IMAGE IN A DIALOG ---
     async def show_full_image_dialog(self, image_src):
         """Displays the room image in a modal dialog."""
         
-        # Determine the Room ID for the title
         room_id = self.resident_page.data.get("room_id", "N/A")
         
         dlg = ft.AlertDialog(
             title=ft.Text(f"Room #{room_id} View"),
             content=ft.Container(
                 ft.Image(src=image_src, fit=ft.ImageFit.CONTAIN),
-                width=500,  # Set maximum width
-                height=400, # Set maximum height
+                width=500, 
+                height=400, 
                 expand=True
             ),
             actions=[ft.TextButton("Close", on_click=lambda e: self.resident_page.page.close(dlg))],
-            content_padding=0 # Remove padding around the image container
+            content_padding=0 
         )
         self.resident_page.page.open(dlg)

@@ -5,7 +5,7 @@ from pages.sections.my_room import MyRoom
 from pages.sections.payment import Payment
 from pages.sections.requests import Requests
 from pages.sections.resident_announcements import ResidentAnnouncements
-from pages.sections.settings import Settings # Import Settings
+from pages.sections.settings import Settings 
 from pages.components.navbar import NavBar
 from pages.components.navbar_button import NavBarButton
 
@@ -23,7 +23,6 @@ class ResidentPage:
         if not res: return
         self.username = res[0][1]; self.email = res[0][2]; self.password = res[0][3]
         try: self.data = json.loads(res[0][4])
-        # FIX: Ensure 'roommate_data' is initialized in case of corrupted/new data
         except: self.data = {"room_id": "N/A", "move_in_date": "N/A", "due_date": "N/A", "payment_history": [], "unpaid_dues": [], "phone_number": "N/A", "linked_admin_id": "N/A", "roommate_data": []}
         
         for k in ["room_id", "move_in_date", "due_date", "phone_number", "linked_admin_id"]: 
@@ -32,11 +31,10 @@ class ResidentPage:
             if k not in self.data: self.data[k] = []
         if "last_checked_announcements" not in self.data:
             self.data["last_checked_announcements"] = 0
-        # FIX: Also ensure roommate_data exists here
         if "roommate_data" not in self.data:
             self.data["roommate_data"] = []
 
-        # --- Count Unread Announcements ---
+        # Count Unread Announcements 
         try:
             # Pass the linked_admin_id to filter announcements
             admin_id = self.data.get("linked_admin_id")
@@ -46,7 +44,6 @@ class ResidentPage:
             if posts:
                 last_checked = self.data.get("last_checked_announcements", 0)
                 for p in posts:
-                    # Date is now at index 4 (p[4]), not p[3]
                     if int(p[4]) > last_checked:
                         self.unread_count += 1
         except Exception as e:
@@ -66,7 +63,6 @@ class ResidentPage:
                     roommate_data_list = [] # List to store full user data for MyRoom
 
                     for u in all_users:
-                        # Skip self
                         if u[0] == self.id: continue
                         
                         u_data = json.loads(u[4])
@@ -76,15 +72,12 @@ class ResidentPage:
                             roommate_data_list.append(u_data) # Full data for phone, etc.
 
                     self.data["roommates"] = roommates_list
-                    # FIX: Populate the missing roommate_data field
                     self.data["roommate_data"] = roommate_data_list 
                 except: self.data["roommates"] = []; self.data["roommate_data"] = []
         else:
-            # FIX: Initialize the missing roommate_data field for unassigned rooms
             self.data.update({"requests_data": [], "monthly_rent": 0, "thumbnail": "placeholder.jpg", "roommates": [], "roommate_data": []})
 
     async def show(self):
-        # Load data first so unread count is accurate
         await self.update_data()
 
         # Create Announcements Button

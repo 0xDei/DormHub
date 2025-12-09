@@ -26,7 +26,6 @@ class Database:
     def get_active_user(self):
         return self.active_user
 
-    # NEW: Function to generate a unique 6-digit alphanumeric key
     def generate_access_key(self, length=6):
         characters = string.ascii_letters + string.digits
         return ''.join(random.choice(characters) for i in range(length))
@@ -93,7 +92,6 @@ class Database:
             )
         """)
         
-        # Create comments table if it doesn't exist
         await self.custom_query("""
             CREATE TABLE IF NOT EXISTS comments (
                 id INT AUTO_INCREMENT,
@@ -107,9 +105,7 @@ class Database:
             )
         """)
 
-        # --- MIGRATION FIX for announcements table ---
         try:
-            # Check if admin_user_id exists
             await self.custom_query("SELECT admin_user_id FROM announcements LIMIT 1")
         except:
             print("Migrating Database: Adding 'admin_user_id' column to announcements table...")
@@ -119,7 +115,6 @@ class Database:
             except Exception as e:
                 print(f"Migration failed: {e}")
         
-        # --- MIGRATION FIX for rooms table ---
         try:
             await self.custom_query("SELECT admin_user_id FROM rooms LIMIT 1")
         except:
@@ -130,8 +125,6 @@ class Database:
             except Exception as e:
                 print(f"Migration failed: {e}")
 
-        # --- MIGRATION FIX for comments table ---
-        # Check if parent_id exists in comments (for existing databases)
         try:
             await self.custom_query("SELECT parent_id FROM comments LIMIT 1")
         except:
@@ -148,15 +141,12 @@ class Database:
                 await cur.execute(query, params)
                 return await cur.fetchall()
 
-    # --- User Methods ---
-    # MODIFIED: Added 'role' and optional 'linked_admin_id' for residents
     async def create_user(self, username, email, password, phone_number="N/A", role="resident", linked_admin_id=None): 
         async with self.pool.acquire() as conn:
             access_key = ""
             if role == "admin":
                 access_key = self.generate_access_key()
 
-            # Store the linked_admin_id ONLY for residents
             if role == "resident" and linked_admin_id is not None:
                 admin_link = linked_admin_id
             else:
@@ -165,7 +155,7 @@ class Database:
             data = {
                 "role": role, 
                 "access_key": access_key, 
-                "linked_admin_id": admin_link, # NEW: Links resident to their admin
+                "linked_admin_id": admin_link, 
                 "room_id": "N/A", "move_in_date": "N/A", "due_date": "N/A",
                 "payment_history": [], "unpaid_dues": [], "phone_number": phone_number
             }
@@ -175,7 +165,6 @@ class Database:
                     (username, email, password, json.dumps(data))
                 )
                 
-    # NEW METHOD: Retrieve Admin ID if key is valid
     async def get_admin_id_by_access_key(self, key):
         admin_users = await self.custom_query("SELECT id, data FROM users")
         
@@ -222,8 +211,6 @@ class Database:
     async def delete_user(self, user_id):
         await self.custom_query("DELETE FROM users WHERE id=%s", (user_id,))
 
-    # --- Room Methods ---
-    # MODIFIED: Added admin_user_id parameter
     async def create_room(self, bed_count, monthly_rent, current_status, thumbnail, admin_user_id):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cur:
@@ -232,10 +219,8 @@ class Database:
                     (admin_user_id, json.dumps([]), json.dumps([]), bed_count, monthly_rent, current_status, thumbnail)
                 )
 
-    # MODIFIED: Added admin_user_id filter
     async def get_all_rooms(self, admin_user_id=None):
         if admin_user_id is None:
-            # Fallback to global query (should generally be filtered by admin_user_id in practice)
             return await self.custom_query("SELECT * FROM rooms")
         else:
             return await self.custom_query("SELECT * FROM rooms WHERE admin_user_id = %s", (admin_user_id,))
@@ -243,7 +228,6 @@ class Database:
     async def get_room_by_id(self, room_id):
         return await self.custom_query("SELECT * FROM rooms WHERE id = %s", (room_id,))
 
-    # --- Request Methods ---
     async def create_request(self, room_id, title, desc, urgency, user_id):
         async with self.pool.acquire() as conn:
             issue = {"title": title, "desc": desc}
@@ -270,21 +254,16 @@ class Database:
     async def get_request_by_room_id(self, room_id):
         return await self.custom_query("SELECT * FROM requests WHERE room_id = %s", (room_id,))
 
-    # --- Announcement Methods ---
-    # MODIFIED: Added admin_user_id parameter
     async def create_announcement(self, title, content, admin_user_id):
         await self.custom_query(
             "INSERT INTO announcements (admin_user_id, title, content, date_created, likes) VALUES (%s, %s, %s, %s, %s)",
             (admin_user_id, title, content, str(int(datetime.now().timestamp())), json.dumps([]))
         )
 
-    # MODIFIED: Added admin_user_id filter
     async def get_announcements(self, admin_user_id=None):
         if admin_user_id is None:
-            # Fallback to global query for generic use 
             return await self.custom_query("SELECT * FROM announcements ORDER BY id DESC")
         else:
-            # Filter posts to show only those matching the provided admin ID
             return await self.custom_query(
                 "SELECT * FROM announcements WHERE admin_user_id = %s ORDER BY id DESC",
                 (admin_user_id,)

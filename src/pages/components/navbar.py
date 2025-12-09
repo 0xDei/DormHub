@@ -15,7 +15,6 @@ class NavBar(ft.Container):
 
         account_button = ft.Container()
         if isAdmin == False:
-            # Store the text control to update it later
             self.username_text = ft.Text(self.current_page.username, size=14, weight=ft.FontWeight.W_400)
             
             account_button = ft.Container(

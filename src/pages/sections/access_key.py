@@ -41,9 +41,7 @@ class AccessKeySection(Section):
         )
 
     def copy_key_to_clipboard(self, key):
-        # Uses Flet's clipboard functionality
         self.admin_page.page.set_clipboard(key)
-        # Show a confirmation snackbar
         self.admin_page.page.snack_bar = ft.SnackBar(ft.Text("Access Key copied to clipboard!"), duration=1000)
         self.admin_page.page.snack_bar.open = True
         self.admin_page.page.update()

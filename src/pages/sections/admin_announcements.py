@@ -8,8 +8,8 @@ class AdminAnnouncements(Section):
     def __init__(self, admin_page):
         super().__init__()
         self.admin_page = admin_page
-        self.admin_id = admin_page.page.data.get_active_user() # Get current Admin ID
-        self.reply_parent_id = None # State for tracking reply target
+        self.admin_id = admin_page.page.data.get_active_user() 
+        self.reply_parent_id = None 
         
         header = ft.Row([
             ft.Column([
@@ -30,7 +30,6 @@ class AdminAnnouncements(Section):
 
     async def load_data(self):
         self.posts_list.controls.clear()
-        # MODIFIED: Filter posts to only those created by this admin
         self.admin_id = self.admin_page.page.data.get_active_user()
         posts = await self.admin_page.page.data.get_announcements(admin_user_id=self.admin_id)
         
@@ -38,10 +37,8 @@ class AdminAnnouncements(Section):
             self.posts_list.controls.append(ft.Container(ft.Text("No announcements yet.", color="grey"), alignment=ft.alignment.center, padding=50))
         else:
             for p in posts:
-                # p: id(0), admin_user_id(1), title(2), content(3), date(4), likes(5)
                 pid = p[0]
                 
-                # FIX: Safely parse likes field (p[5]). Handle non-string/corrupt data (TypeError fix).
                 likes_raw = p[5]
                 likes = []
                 if isinstance(likes_raw, str):
@@ -52,29 +49,26 @@ class AdminAnnouncements(Section):
                 
                 likes_count = len(likes)
                 
-                # FIX: Safely convert timestamp (p[4]). If invalid, defaults to 0 (Unix epoch start).
                 date_raw = p[4]
                 try:
                     dt = datetime.fromtimestamp(int(date_raw)).strftime("%b %d, %Y")
                 except (ValueError, TypeError):
                     dt = "N/A"
                 
-                # Use updated indices: title(2), content(3), date(4)
                 comments = await self.admin_page.page.data.get_comments(pid)
                 comment_count = len(comments)
                 
                 card = ft.Container(
                     ft.Column([
                         ft.Row([
-                            ft.Text(p[2], weight="bold", size=16, expand=True), # title 
-                            # Updated: Calls show_delete_confirmation instead of delete_post directly
+                            ft.Text(p[2], weight="bold", size=16, expand=True),
                             ft.IconButton(
                                 ft.Icons.DELETE_OUTLINE, 
                                 icon_color="red", 
                                 on_click=lambda e, pid=pid: self.admin_page.page.run_task(self.show_delete_confirmation, pid)
                             )
                         ]),
-                        ft.Text(p[3], size=13, color="#444444"), # content
+                        ft.Text(p[3], size=13, color="#444444"), 
                         ft.Divider(),
                         ft.Row([
                             ft.Text(dt, size=11, color="grey"),
@@ -99,7 +93,6 @@ class AdminAnnouncements(Section):
         
         async def post(e):
             if not title.value or not content.value: return
-            # MODIFIED: Pass admin_id when creating announcement
             await self.admin_page.page.data.create_announcement(title.value, content.value, self.admin_id)
             self.admin_page.page.close(dlg)
             await self.load_data()
@@ -118,7 +111,6 @@ class AdminAnnouncements(Section):
         """Shows a confirmation dialog before deleting an announcement."""
         
         async def confirm_delete(e):
-            # Perform deletion
             await self.admin_page.page.data.delete_announcement(pid)
             self.admin_page.page.close(dlg)
             await self.load_data()
@@ -138,16 +130,14 @@ class AdminAnnouncements(Section):
         self.reply_parent_id = None # Reset
         comments_data = await self.admin_page.page.data.get_comments(pid)
         
-        # Sort into parents and replies
-        parents = [c for c in comments_data if c[6] is None] # parent_id is index 6
+        parents = [c for c in comments_data if c[6] is None] 
         replies = [c for c in comments_data if c[6] is not None]
 
         comment_list = ft.ListView(expand=True, spacing=10)
 
-        # Helper defined before loop to avoid UnboundLocalError
+       
         async def post_comment(e):
             if not new_comment_tf.value: return
-            # Admin User ID = 0, Username = "Landlord"
             await self.admin_page.page.data.add_comment(pid, 0, "Landlord", new_comment_tf.value, self.reply_parent_id)
             self.admin_page.page.close(dlg)
             await self.load_data() 
@@ -168,7 +158,6 @@ class AdminAnnouncements(Section):
                 
                 comment_list.controls.append(self.create_comment_bubble(p[3], p[4], p_dt, p_id, new_comment_tf))
 
-                # Render Replies for this parent
                 p_replies = [r for r in replies if r[6] == p_id]
                 for r in p_replies:
                     r_dt = datetime.fromtimestamp(int(r[5])).strftime("%b %d %H:%M")

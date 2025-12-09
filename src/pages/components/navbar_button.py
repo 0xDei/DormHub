@@ -40,8 +40,6 @@ class NavBarButton(ft.Container):
             padding=ft.padding.symmetric(horizontal=6, vertical=2),
             visible=self.badge_count > 0,
             alignment=ft.alignment.center,
-            # FIXED: Offset (x, y) moves the badge relative to its size
-            # y=-0.5 moves it up by 50% of its height (superscript effect)
             offset=ft.Offset(0, -0.5) 
         )
 
@@ -57,9 +55,8 @@ class NavBarButton(ft.Container):
                 ),
                 self.badge 
             ],
-            # Use START to place items (Icon+Text and Badge) next to each other
             alignment=ft.MainAxisAlignment.START, 
-            spacing=0, # Tight spacing
+            spacing=0, 
             vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
         
@@ -79,7 +76,6 @@ class NavBarButton(ft.Container):
         """Highlights the button as selected."""
         self.selected = True
         self.bgcolor = self.selected_bg
-        # Access Icon inside the nested Row
         self.content.controls[0].controls[0].color = self.selected_icon 
         self.content.controls[0].controls[1].color = ft.Colors.BLACK
         self.update()
