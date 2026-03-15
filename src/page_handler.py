@@ -71,7 +71,8 @@ class PageHandler:
                 resident_card
             ],
             alignment=ft.MainAxisAlignment.CENTER,
-            spacing=50
+            spacing=50,
+            wrap=True
         )
 
         if self.page.data.connected == False: await self.page.data.connect(self.page)
@@ -84,7 +85,8 @@ class PageHandler:
             ],
             spacing=40,
             bgcolor="#FFFBEB",
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            scroll=ft.ScrollMode.ALWAYS
         )
 
 

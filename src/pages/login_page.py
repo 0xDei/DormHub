@@ -31,9 +31,9 @@ class LoginPage:
                 hint_text="Enter admin email", 
                 hint_style=ft.TextStyle(color="#B8B8C1"), 
                 text_style=ft.TextStyle(color=ft.Colors.BLACK), 
-                border_radius=10, 
-                border_width=0, 
-                bgcolor="#F3F3F5", 
+                border_radius=10,
+                border_width=0,
+                bgcolor="#F3F3F5",
                 prefix_icon=ft.Icon(ft.Icons.EMAIL_OUTLINED, color="#B8B8C1"), 
                 width=340, 
                 on_submit=lambda e: self.page.run_task(self.check_admin_login, admin_email_tf, admin_pass_tf)
@@ -138,7 +138,6 @@ class LoginPage:
             )
 
             current_view = self.admin_login_view
-
         else: 
             login_field = ft.TextField(
                 label="Username", 
