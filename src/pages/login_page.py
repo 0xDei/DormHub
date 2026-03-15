@@ -296,13 +296,16 @@ class LoginPage:
         return ft.View(
             "/login-admin" if self.type == 0 else "/login-resident",
             [
-                ft.Row(
-                    [
-                        get_icon(64, True, 18, 16, 24, 18, ft.margin.only(bottom=30)), 
-                        self.card_container
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    spacing=70
+                ft.Container(
+                        ft.Row(
+                        [
+                            get_icon(64, True, 18, 16, 24, 18, ft.margin.only(bottom=30)),
+                            self.card_container
+                        ],
+                        wrap=True,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=70
+                    ),
                 )
             ],
             appbar=ft.AppBar(
@@ -316,7 +319,8 @@ class LoginPage:
             ),
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             vertical_alignment=ft.MainAxisAlignment.CENTER,
-            bgcolor="#FFFBEB"
+            bgcolor="#FFFBEB",
+            scroll=ft.ScrollMode.ALWAYS,
         )
 
 

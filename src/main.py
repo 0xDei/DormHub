@@ -8,6 +8,9 @@ def main(page: ft.Page):
     page.title = "DormHub"
     page.window.width = 900
     page.window.height = 720
+
+    page.window.min_width = 375
+
     page.window.resizable = True
     page.theme_mode = ft.ThemeMode.LIGHT
 
@@ -41,8 +44,12 @@ def main(page: ft.Page):
             return
         page.go(page.views[-1].route)
 
+    def on_page_resize(e):
+        page.data.current_width = page.window.width
+
     page.on_route_change = route_change
     page.on_view_pop = view_pop
+    page.on_resized = on_page_resize
 
     page.go(page.route)
     page.update()
