@@ -19,7 +19,8 @@ class Rooms(Section):
                     ft.Text("Room Management", color="#E78B28", size=16, weight="w500"),
                     ft.Text("Manage beds and room availability", size=12, weight="w500")
                 ], spacing=1, expand=True),
-                ft.FilledButton("Add Room", icon=ft.Icons.ADD, bgcolor="#FF6900", on_click=self.show_add_room)
+                # FIX 1: async on_click must be wrapped with run_task
+                ft.FilledButton("Add Room", icon=ft.Icons.ADD, bgcolor="#FF6900", on_click=lambda e: self.admin_page.page.run_task(self.show_add_room, e))
             ]
         )
 
@@ -135,7 +136,8 @@ class Rooms(Section):
 
         upload_pic = ft.Row([ft.TextField(room['thumbnail'], label="Select Thumbnail", disabled=True, expand=True), ft.ElevatedButton("Select", on_click=lambda _: file_picker.pick_files(allow_multiple=False, allowed_extensions=["png", "jpg", "jpeg"]))], alignment="center")
 
-        bed_count = ft.Dropdown(label="Bed Count", options=[ft.DropdownOption(i, str(i)) for i in range(1, 11)], value=room['bed_count'], expand=True)
+        # FIX 2: Use str keys in DropdownOption to avoid None value on selection
+        bed_count = ft.Dropdown(label="Bed Count", options=[ft.DropdownOption(str(i), str(i)) for i in range(1, 11)], value=str(room['bed_count']), expand=True)
         
         status = ft.Dropdown(label="Status Override", options=[ft.DropdownOption("available"), ft.DropdownOption("occupied"), ft.DropdownOption("maintenance")], value=room['status'], expand=True)
 
@@ -160,7 +162,11 @@ class Rooms(Section):
             f = file_picker.result.files[0]
             file_name = f.name
             os.makedirs("assets/room_thumbnails", exist_ok=True)
-            shutil.copy2(f.path, f"assets/room_thumbnails/{file_name}")
+            # FIX 4: Read into memory first then write — avoids WinError 32
+            with open(f.path, "rb") as src:
+                data = src.read()
+            with open(f"assets/room_thumbnails/{file_name}", "wb") as dst:
+                dst.write(data)
 
         await self.admin_page.page.data.custom_query(
             "UPDATE rooms SET bed_count=%s, monthly_rent=%s, current_status=%s, thumbnail=%s WHERE id=%s",
@@ -180,7 +186,8 @@ class Rooms(Section):
 
         upload_pic = ft.Row([ft.TextField("placeholder.jpg", label="Thumbnail", disabled=True, expand=True), ft.ElevatedButton("Select", on_click=lambda _: file_picker.pick_files(allow_multiple=False))], alignment="center")
         
-        bed_count = ft.Dropdown(label="Beds", options=[ft.DropdownOption(i, str(i)) for i in range(1, 11)], value=1, expand=True)
+        # FIX 2: Use str keys in DropdownOption to avoid None value on selection
+        bed_count = ft.Dropdown(label="Beds", options=[ft.DropdownOption(str(i), str(i)) for i in range(1, 11)], value="1", expand=True)
         status = ft.Dropdown(label="Status", options=[ft.DropdownOption("available"), ft.DropdownOption("maintenance")], value="available", expand=True)
         monthly_rent = ft.TextField(label="Rent", prefix_text="₱ ", value="", keyboard_type="number", input_filter=ft.InputFilter(r'^[0-9]*$'), expand=True)
 
@@ -195,22 +202,36 @@ class Rooms(Section):
         self.admin_page.page.open(popup)
 
     async def check_add_room(self, file_picker, status, bed_count, monthly_rent, popup):
-        if not monthly_rent.value: return
+        # FIX 3: Validate rent and show error instead of silently returning
+        if not monthly_rent.value or int(monthly_rent.value) < 1:
+            monthly_rent.error_text = "Please enter a valid rent amount"
+            monthly_rent.update()
+            return
 
-        file_name = "placeholder.jpg"
-        if file_picker.result and file_picker.result.files:
-            f = file_picker.result.files[0]
-            file_name = f.name
-            os.makedirs("assets/room_thumbnails", exist_ok=True)
-            shutil.copy2(f.path, f"assets/room_thumbnails/{file_name}")
+        try:
+            file_name = "placeholder.jpg"
+            if file_picker.result and file_picker.result.files:
+                f = file_picker.result.files[0]
+                file_name = f.name
+                os.makedirs("assets/room_thumbnails", exist_ok=True)
+                # FIX 4: Read into memory first then write — avoids WinError 32
+                # (FilePicker holds a lock on the file; shutil.copy2 fails on Windows)
+                with open(f.path, "rb") as src:
+                    data = src.read()
+                with open(f"assets/room_thumbnails/{file_name}", "wb") as dst:
+                    dst.write(data)
 
-        # Get Admin ID for room creation
-        admin_id = self.admin_page.page.data.get_active_user()
-        
-        await self.admin_page.page.data.create_room(int(bed_count.value), int(monthly_rent.value), status.value, file_name, admin_id)
-        self.admin_page.page.close(popup)
-        create_banner(self.admin_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.ADD_HOME, color="green"), "Room created!", "green")
-        await self.load_rooms()
+            # Get Admin ID for room creation
+            admin_id = self.admin_page.page.data.get_active_user()
+            
+            await self.admin_page.page.data.create_room(int(bed_count.value), int(monthly_rent.value), status.value, file_name, admin_id)
+            self.admin_page.page.close(popup)
+            create_banner(self.admin_page.page, ft.Colors.GREEN_100, ft.Icon(ft.Icons.ADD_HOME, color="green"), "Room created!", "green")
+            await self.load_rooms()
+        except Exception as e:
+            print(f"Error creating room: {e}")
+            monthly_rent.error_text = "Failed to create room. Check console for details."
+            monthly_rent.update()
 
     async def delete_room(self, room):
         def confirm(e):
